@@ -32,9 +32,9 @@ This study provides deeper insights into the strengths and weaknesses of
 different survival methods, helping researchers make **better-informed
 decisions in healthcare applications**.
 
-## 🏗️ Architecture Pipeline of Federated Survival Model
+## 🏗️ Architecture Pipeline of FSA-Bench Framework
 
-![STCRL Architecture](asset/federated_survival_analysis.png)
+![STCRL Architecture](asset/FSA_Bench_Framework.png)
 
 
 ## 🚀 Installation
