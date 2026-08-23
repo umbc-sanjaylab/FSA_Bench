@@ -39,29 +39,47 @@ decisions in healthcare applications**.
 
 ## 🚀 Installation
 ### From source
-Download a local copy of Benchmark_Study_of_FSM and install from the directory:
+Download a local copy of FSA_Bench from the directory and install it from that local copy:
 
 ```bash
-	git clone https://github.com/sultanoid/Benchmark_Study_of_FSM.git
-	cd Benchmark_Study_of_FSM
+	git clone https://github.com/umbc-sanjaylab/FSA_Bench.git
+	cd FSA_Bench
 	pip install -r requirements.txt
 ```
 
 ### Configure the environement
 ```bash 
-conda create -n benchmark_FSM python=3.10
-conda activate benchmark_FSM 
+conda create -n FSA_Bench python=3.10
+conda activate FSA_Bench
 pip install -r requirements.txt
 ``` 
 
-## 📊 Dataset  
+## 📊 Dataset
 
-The **SurvSet repository** is designed to work with benchmarking analysis of different survival analysis models. The expected data format includes:  
+In our designed FSA-Bench framework, we evaluate federated survival models on **10 real-world federated survival datasets** covering diverse clinical domains, patient populations, sample sizes etc.
 
-- **Outcome**: Event status, Survival time  
-- **Subject Information**: Covariates of participants for cross-subject analysis  
+To emulate realistic federated healthcare environments, naturally occurring institutional or geographically defined partitions are preserved whenever available. This allows FSA-Bench to evaluate survival models under heterogeneous and non-IID data distributions across multiple clients.
 
-🔗 [SurvSet Repository](https://github.com/ErikinBC/SurvSet)
+### Dataset Summary
+
+| Dataset | Samples | Variables | Event (%) | Censoring (%) | # Clients | Data Link |
+|---|---:|---:|---:|---:|---:|---|
+| **TCGA** | 6,084 | 283 | 30.50 | 69.50 | 7 | [Link](https://www.cancer.gov/ccg/research/genome-sequencing/tcga) |
+| **Aids2** | 2,839 | 3 | 62.03 | 37.97 | 4 | [Link](https://rdrr.io/cran/MASS/man/Aids2.html) |
+| **LeukSurv** | 1,043 | 4 | 84.28 | 15.72 | 24 | [Link](https://rdrr.io/cran/spBayesSurv/man/LeukSurv.html) |
+| **Pbc3** | 349 | 12 | 17.48 | 82.52 | 6 | [Link](https://www.rdocumentation.org/packages/pec/versions/2025.06.24/topics/Pbc3) |
+| **Dialysis** | 6,805 | 2 | 23.56 | 76.44 | 67 | [Link](https://rdrr.io/cran/RcmdrPlugin.survival/man/Dialysis.html) |
+| **Oropharyngeal Carcinoma** | 192 | 12 | 72.40 | 27.60 | 6 | [Link](https://rdrr.io/cran/invGauss/man/d.oropha.rec.html) |
+| **cgd** | 128 | 8 | 34.38 | 65.62 | 4 | [Link](https://rdrr.io/cran/survival/man/cgd.html) |
+| **uis** | 628 | 7 | 80.89 | 19.11 | 2 | [Link](https://github.com/graemeleehickey/hosmer-lemeshow/blob/master/edition2/uis.txt) |
+| **scania** | 1,040 | 4 | 52.60 | 47.40 | 5 | [Link](https://cran.r-project.org/web/packages/eha/refman/eha.html#scania) |
+| **SEER** | 25,749 | 11 | 25.36 | 74.64 | 3 | [Link](https://seer.cancer.gov/) |
+
+The datasets span a wide range of federation settings, from **2 clients
+(UIS)** to **67 clients (Dialysis)**, and include both relatively small
+cohorts such as **cgd (128 samples)** and large-scale datasets such as
+**SEER (25,749 samples)**. The varying event and censoring rates enable
+evaluation of model robustness under heterogeneous survival conditions.
 
 
 ## 📈 Evaluation
@@ -87,4 +105,4 @@ numpy==1.24.3
 
 This project is licensed under the lab of UMBC Professor Sanjay Lab - see the [LICENSE](LICENSE) file for details.
 
-**Benchmark_FSM** - A benchmark study of existing federated survival models. 
+**FSA-Bench** - A benchmark study of existing federated survival models. 
