@@ -58,8 +58,7 @@ pip install -r requirements.txt
 
 In our designed FSA-Bench framework, we evaluate federated survival models on **10 real-world federated survival datasets** covering diverse clinical domains, patient populations, sample sizes etc.
 
-To emulate realistic federated healthcare environments, naturally occurring institutional or geographically defined partitions are preserved whenever available. This allows FSA-Bench to evaluate survival models under
-heterogeneous and non-IID data distributions across multiple clients.
+To emulate realistic federated healthcare environments, naturally occurring institutional or geographically defined partitions are preserved whenever available. This allows FSA-Bench to evaluate survival models under heterogeneous and non-IID data distributions across multiple clients.
 
 ### Dataset Summary
 
