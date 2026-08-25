@@ -80,17 +80,19 @@ FSA-Bench evaluates the following survival models:
 - **FedPLSTM**
 - **FedPAttn**
 
-## ⚙️ Experimental Protocol
-
+## ⚙️ Experimental Setup
+We use the following experimental setup during modeling of distributed survival data using federated survival models. 
+ 
 - **5-fold cross-validation**
 - **Centralized Learning (CL)** and **Federated Learning (FL)**
-- Up to **50 federated communication rounds**
-- **Early stopping** based on validation performance
+- Up to **50 federated communication rounds** and **250 local epochs**
+- **Early stopping** based on validation performance at both client level and server level  
 - Consistent preprocessing and evaluation across datasets and models
 
 ## 📈 Evaluation
 
 ### Predictive Performance
+We utilize the following metrics to evaluate the predictive performances of federated survival models. 
 
 - **Time-dependent C-index** — Measures model discrimination. Higher is better.
 - **Integrated Brier Score (IBS)** — Measures survival probability prediction accuracy. Lower is better.
@@ -98,7 +100,7 @@ FSA-Bench evaluates the following survival models:
 
 ### Statistical Analysis
 
-Pairwise model comparisons are performed using statistical significance tests with multiple-comparison correction.
+We perform pairwise Wilcoxon signed-rank statistical test on FedPAttn model with other federated survival baselines. Holm correction is applied across the comparisons. 
 
 ### Explanation Stability
 
