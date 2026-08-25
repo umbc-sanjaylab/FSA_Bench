@@ -7,19 +7,19 @@
 
 ## 🎯 Overview
 
-Clinical survival data are often distributed across multiple healthcare institutions due to privacy and data-sharing constraints. Federated Learning (FL) enables institutions to collaboratively train survival models without sharing patient-level data.
+Survival analysis aims to predict the probability of our expected event over the time. Traditionally, survival data in healthcare are often distributed across multiple institutions and we cannot pull them due to privacy and data-sharing constraints such as HIPPA/GDPR. Federated Learning (FL) enables institutions to collaboratively train survival models without sharing sensitive patient-level data.
 
-**FSA-Bench** provides a comprehensive benchmark for evaluating federated survival models under heterogeneous and distributed healthcare settings.
+In this repository, we present **FSA-Bench**, a comprehensive benchmark for evaluating federated survival models under heterogeneous and distributed healthcare settings.
 
 ### 📌 Our Contribution
 
-- Comprehensive benchmarking of **federated survival models** across **10 real-world survival datasets**.
-- Evaluation of **statistical, machine learning, neural, and deep learning-based survival models**.
-- Comparison of **Centralized Learning (CL)** and **Federated Learning (FL)** settings.
+- Comprehensive benchmarking of **federated survival models** across **10 real-world federated survival datasets**.
+- Evaluation of **statistical, machine learning, deep learning and state-of-the-art Attention based federated survival models**.
+- Comparison of **Centralized Learning (CL)** and **Federated Learning (FL)** partitions.
 - Evaluation under varying **censoring rates** and **numbers of participating clients**.
 - Evaluation using **C-index, Integrated Brier Score (IBS), and Negative Log-Likelihood (NLL)**.
 - Statistical significance analysis of model performance.
-- Evaluation of **explanation stability** using SurvSHAP, Spearman correlation, Kendall's tau, and Jaccard similarity.
+- Evaluation of **explanation stability** using SurvSHAP, Spearman correlation, Kendall's tau, and Jaccard similarity across fold, institutions, and partitions level. 
 
 ## 🏗️ Architecture Pipeline of FSA-Bench Framework
 
@@ -45,9 +45,9 @@ pip install -r requirements.txt
 
 ## 📊 Dataset
 
-FSA-Bench evaluates federated survival models on **10 real-world survival datasets** covering diverse clinical domains, patient populations, sample sizes, feature dimensionalities, event rates, censoring patterns, and federated client configurations.
+FSA-Bench comprehensively evaluates federated survival models on **10 real-world federated survival datasets** covering diverse clinical domains, patient populations, sample sizes, feature dimensionalities, event rates, censoring patterns, and federated client configurations.
 
-To emulate realistic federated healthcare environments, naturally occurring institutional or geographically defined partitions are preserved whenever available. This enables evaluation under heterogeneous and non-IID data distributions across multiple clients.
+To evaluate models under realistic federated healthcare environments, we preserve naturally occurring institutional or geographically defined partitions. This enables evaluation under heterogeneous and non-IID data distributions across multiple clients in realistic environments.
 
 ### Dataset Summary
 
@@ -64,7 +64,7 @@ To emulate realistic federated healthcare environments, naturally occurring inst
 | **scania** | 1,040 | 4 | 52.60 | 47.40 | 5 | [Link](https://cran.r-project.org/web/packages/eha/refman/eha.html#scania) |
 | **SEER** | 25,749 | 11 | 25.36 | 74.64 | 3 | [Link](https://seer.cancer.gov/) |
 
-The datasets span a wide range of federation settings, from **2 clients (UIS)** to **67 clients (Dialysis)**, and include both small cohorts such as **cgd (128 samples)** and large-scale datasets such as **SEER (25,749 samples)**.
+The datasets span a wide range of federated settings, from **2 clients (UIS)** to **67 clients (Dialysis)**, and include both small cohorts such as **cgd (128 samples)** and large-scale datasets such as **SEER (25,749 samples)**.
 
 ## 🤖 Survival Models
 

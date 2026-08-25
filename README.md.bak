@@ -1,64 +1,53 @@
 # FSA-Bench: Benchmarking Federated Survival Models
 
-## 
-
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![PyTorch](https://img.shields.io/badge/PyTorch-2.0+-red.svg)](https://pytorch.org/)
-[![Flare](https://img.shields.io/badge/Flare-2.7+-orange.svg)](https://www.mathworks.com/products/matlab.html)
-[![License: UMBC-Prof-Sanjay-Lab](https://img.shields.io/badge/License-UMBC_Prof_Sanjay_Lab-yellow.svg)](https://opensource.org/licenses/MIT)
-[![arXiv](https://img.shields.io/badge/arXiv-20245xxxx-b31b1b.svg)](https://arxiv.org/abs/2024.xxxx)
+[![NVIDIA FLARE](https://img.shields.io/badge/NVIDIA%20FLARE-2.7+-orange.svg)](https://nvflare.readthedocs.io/)
+[![License: UMBC-Prof-Sanjay-Lab](https://img.shields.io/badge/License-UMBC_Prof_Sanjay_Lab-yellow.svg)](LICENSE)
 
-## 🎯 Overview 
-Recent efforts in the literature have explored survival
-models, but several key gaps remain:
+## 🎯 Overview
 
--   **Lack of comprehensive comparison**: No prior study has
-    benchmarked a wide range of survival modeling methods within a
-    single paper in federated settings. 
--   **Limited datasets** -- Most existing works have only been
-    tested on a few datasets, restricting their applicability in
-    different fields of research domains. 
+Survival analysis aims to predict the probability of our expected event over the time. Traditionally, survival data in healthcare are often distributed across multiple institutions and we cannot pull them due to privacy and data-sharing constraints such as HIPPA/GDPR. Federated Learning (FL) enables institutions to collaboratively train survival models without sharing sensitive patient-level data.
+
+In this repository, we present **FSA-Bench**, a comprehensive benchmark for evaluating federated survival models under heterogeneous and distributed healthcare settings.
 
 ### 📌 Our Contribution
 
-In this work, we present:
-
--   A **comprehensive benchmarking analysis** of **Federated Survival
-    Models** using the **SurvSet repository**.\
--   A **performance comparison** against **state-of-the-art neural
-    network-based federated Cox proportional hazard models**.
-
-This study provides deeper insights into the strengths and weaknesses of
-different survival methods, helping researchers make **better-informed
-decisions in healthcare applications**.
+- Comprehensive benchmarking of **federated survival models** across **10 real-world federated survival datasets**.
+- Evaluation of **statistical, machine learning, deep learning and state-of-the-art Attention based federated survival models**.
+- Comparison of **Centralized Learning (CL)** and **Federated Learning (FL)** partitions.
+- Evaluation under varying **censoring rates** and **numbers of participating clients**.
+- Evaluation using **C-index, Integrated Brier Score (IBS), and Negative Log-Likelihood (NLL)**.
+- Statistical significance analysis of model performance.
+- Evaluation of **explanation stability** using SurvSHAP, Spearman correlation, Kendall's tau, and Jaccard similarity across fold, institutions, and partitions level. 
 
 ## 🏗️ Architecture Pipeline of FSA-Bench Framework
 
-![STCRL Architecture](asset/FSA_Bench_Framework.png)
-
+![FSA-Bench Framework](asset/FSA_Bench_Framework.png)
 
 ## 🚀 Installation
-### From source
-Download a local copy of FSA_Bench from the directory and install it from that local copy:
+
+### From Source
 
 ```bash
-	git clone https://github.com/umbc-sanjaylab/FSA_Bench.git
-	cd FSA_Bench
-	pip install -r requirements.txt
+git clone https://github.com/umbc-sanjaylab/FSA_Bench.git
+cd FSA_Bench
+pip install -r requirements.txt
 ```
 
-### Configure the environement
-```bash 
+### Configure the Environment
+
+```bash
 conda create -n FSA_Bench python=3.10
 conda activate FSA_Bench
 pip install -r requirements.txt
-``` 
+```
 
 ## 📊 Dataset
 
-In our designed FSA-Bench framework, we evaluate federated survival models on **10 real-world federated survival datasets** covering diverse clinical domains, patient populations, sample sizes etc.
+FSA-Bench comprehensively evaluates federated survival models on **10 real-world federated survival datasets** covering diverse clinical domains, patient populations, sample sizes, feature dimensionalities, event rates, censoring patterns, and federated client configurations.
 
-To emulate realistic federated healthcare environments, naturally occurring institutional or geographically defined partitions are preserved whenever available. This allows FSA-Bench to evaluate survival models under heterogeneous and non-IID data distributions across multiple clients.
+To evaluate models under realistic federated healthcare environments, we preserve naturally occurring institutional or geographically defined partitions. This enables evaluation under heterogeneous and non-IID data distributions across multiple clients in realistic environments.
 
 ### Dataset Summary
 
@@ -75,34 +64,71 @@ To emulate realistic federated healthcare environments, naturally occurring inst
 | **scania** | 1,040 | 4 | 52.60 | 47.40 | 5 | [Link](https://cran.r-project.org/web/packages/eha/refman/eha.html#scania) |
 | **SEER** | 25,749 | 11 | 25.36 | 74.64 | 3 | [Link](https://seer.cancer.gov/) |
 
-The datasets span a wide range of federation settings, from **2 clients
-(UIS)** to **67 clients (Dialysis)**, and include both relatively small
-cohorts such as **cgd (128 samples)** and large-scale datasets such as
-**SEER (25,749 samples)**. The varying event and censoring rates enable
-evaluation of model robustness under heterogeneous survival conditions.
+The datasets span a wide range of federation settings, from **2 clients (UIS)** to **67 clients (Dialysis)**, and include both small cohorts such as **cgd (128 samples)** and large-scale datasets such as **SEER (25,749 samples)**.
 
+## 🤖 Survival Models
+
+FSA-Bench evaluates the following survival models:
+
+- **Fed. Kaplan-Meier (Fed. KM)**
+- **Fed. AFT-Weibull**
+- **Fed. CoxPH**
+- **NNPH**
+- **NNnPH**
+- **LinearPH**
+- **DeepPseudo**
+- **DeepHit**
+- **FedPDNN**
+- **FedPLSTM**
+- **FedPAttn**
+
+## ⚙️ Experimental Protocol
+
+- **5-fold cross-validation**
+- **Centralized Learning (CL)** and **Federated Learning (FL)**
+- Up to **50 federated communication rounds**
+- **Early stopping** based on validation performance
+- Consistent preprocessing and evaluation across datasets and models
 
 ## 📈 Evaluation
 
-### Comprehensive Metrics
+### Predictive Performance
 
-- **Concordance Index**: Assesses how well a model can predict survival times close to the truth. 
-- **Brier Score**: Measures the accuracy of the predicted survival
-probability for a sample at a given time. 
- 
+- **Time-dependent C-index** — Measures model discrimination. Higher is better.
+- **Integrated Brier Score (IBS)** — Measures survival probability prediction accuracy. Lower is better.
+- **Negative Log-Likelihood (NLL)** — Measures probabilistic prediction accuracy. Lower is better.
+
+### Statistical Analysis
+
+Pairwise model comparisons are performed using statistical significance tests with multiple-comparison correction.
+
+### Explanation Stability
+
+Model explanations are evaluated using **SurvSHAP** across folds, federated sites, and centralized/federated partitions.
+
+Stability is measured using:
+
+- **Spearman's rank correlation**
+- **Kendall's tau**
+- **Jaccard similarity**
+
 ## 📋 Requirements
 
-```
+```text
 jupyter==1.0.0
 pycox==0.2.3
 torch==2.0.1
 scikit-learn==1.2.2
 pandas==1.3.5
-numpy==1.24.3 
+numpy==1.24.3
 ```
 
 ## 📄 License
 
-This project is licensed under the lab of UMBC Professor Sanjay Lab - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the UMBC Professor Sanjay Lab license.
 
-**FSA-Bench** - A benchmark study of existing federated survival models. 
+See the [LICENSE](LICENSE) file for details.
+
+---
+
+**FSA-Bench** — A comprehensive benchmark for federated survival models.
