@@ -45,10 +45,7 @@ pip install -r requirements.txt
 
 ## 📊 Dataset
 
-FSA-Bench comprehensively evaluates federated survival models on **10 real-world federated survival datasets** covering diverse clinical domains, patient populations, sample sizes, feature dimensionalities, event rates, censoring patterns, and federated client configurations.
-
-To evaluate models under realistic federated healthcare environments, we preserve naturally occurring institutional or geographically defined partitions. This enables evaluation under heterogeneous and non-IID data distributions across multiple clients in realistic environments.
-
+FSA-Bench comprehensively evaluates federated survival models on **10 real-world federated survival datasets** covering diverse clinical domains, patient populations, sample sizes, feature dimensionalities, event rates, censoring patterns, and federated client configurations. We preserve naturally occurring institutional or geographically defined partitions to reflect model evaluation under heterogeneous data distributions across clients at realistic federated healthcare environments.   
 ### Dataset Summary
 
 | Dataset | Samples | Variables | Event (%) | Censoring (%) | # Clients | Data Link |
@@ -64,7 +61,7 @@ To evaluate models under realistic federated healthcare environments, we preserv
 | **scania** | 1,040 | 4 | 52.60 | 47.40 | 5 | [Link](https://cran.r-project.org/web/packages/eha/refman/eha.html#scania) |
 | **SEER** | 25,749 | 11 | 25.36 | 74.64 | 3 | [Link](https://seer.cancer.gov/) |
 
-The datasets span a wide range of federation settings, from **2 clients (UIS)** to **67 clients (Dialysis)**, and include both small cohorts such as **cgd (128 samples)** and large-scale datasets such as **SEER (25,749 samples)**.
+The datasets span a wide range of federated settings, from **2 clients (UIS)** to **67 clients (Dialysis)**, and include both small cohorts such as **cgd (128 samples)** and large-scale datasets such as **SEER (25,749 samples)**.
 
 ## 🤖 Survival Models
 
