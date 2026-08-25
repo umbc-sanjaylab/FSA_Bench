@@ -94,9 +94,9 @@ We use the following experimental setup during modeling of distributed survival 
 ### Predictive Performance
 We utilize the following metrics to evaluate the predictive performances of federated survival models. 
 
-- **Time-dependent C-index** — Measures model discrimination. Higher is better.
-- **Integrated Brier Score (IBS)** — Measures survival probability prediction accuracy. Lower is better.
-- **Negative Log-Likelihood (NLL)** — Measures probabilistic prediction accuracy. Lower is better.
+- **Time-dependent C-index** — eavaluates model's ability to correctly rank patients according to their risks. The higher the value, the better the model is.
+- **Integrated Brier Score (IBS)** — measures survival probability prediction accuracy. Lower is better.
+- **Negative Log-Likelihood (NLL)** — measures the agreement between the predicted survival distribution and ovserved event times. Lower value indicates better performance.
 
 ### Statistical Analysis
 
