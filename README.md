@@ -104,9 +104,9 @@ We perform pairwise Wilcoxon signed-rank statistical test on FedPAttn model with
 
 ### Explanation Stability
 
-Model explanations are evaluated using **SurvSHAP** across folds, federated sites, and centralized/federated partitions.
+We perform explanation-stability analysis on federated survival models using **SurvSHAP** across folds, federated sites, and centralized/federated partitions.
 
-Stability is measured using:
+Stability is measured using the following metrices:
 
 - **Spearman's rank correlation**
 - **Kendall's tau**

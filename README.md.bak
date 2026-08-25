@@ -101,9 +101,10 @@ We utilize the following metrics to evaluate the predictive performances of fede
 ### Statistical Analysis
 
 We perform pairwise Wilcoxon signed-rank statistical test on FedPAttn model with other federated survival baselines. Holm correction is applied across the comparisons. 
+
 ### Explanation Stability
 
-Model explanations are evaluated using **SurvSHAP** across folds, federated sites, and centralized/federated partitions.
+We perform explanation-stability analysis on federated survival models using **SurvSHAP** across folds, federated sites, and centralized/federated partitions.
 
 Stability is measured using:
 
