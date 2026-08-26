@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="FSA-Bench: Benchmarking Federated Survival Models" />
+  <title>FSA-Bench — Benchmarking Federated Survival Models</title>
+  <link rel="icon" href="asset/image/favicon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="asset/css/style.css" />
+</head>
+<body>
+  <header class="site-header">
+    <nav class="nav container">
+      <a class="brand" href="#top">FSA-Bench</a>
+      <div class="nav-links">
+        <a href="#overview">Overview</a>
+        <a href="#benchmark">Benchmark</a>
+        <a href="#models">Models</a>
+        <a href="#results">Results</a>
+        <a href="#stability">Stability</a>
+        <a href="#citation">Citation</a>
+      </div>
+      <button class="menu-toggle" aria-label="Toggle menu">☰</button>
+    </nav>
+  </header>
+
+  <main id="top">
+    <section class="hero">
+      <div class="container hero-grid">
+        <div class="hero-copy">
+          <div class="eyebrow">Machine Learning for Healthcare · 2026</div>
+          <h1>FSA-Bench</h1>
+          <h2>Benchmarking Federated Survival Models</h2>
+          <p class="authors">
+            <strong>Sultan Ahmed</strong> · Sanjay Purushotham<br />
+            University of Maryland, Baltimore County
+          </p>
+          <p class="hero-text">
+            A comprehensive benchmark for evaluating survival models under realistic
+            federated and multi-institutional healthcare conditions.
+          </p>
+          <div class="buttons">
+            <a class="btn primary" href="https://github.com/umbc-sanjaylab/FSA_Bench" target="_blank" rel="noopener">Code ↗</a>
+            <a class="btn secondary" href="#citation">Cite</a>
+          </div>
+        </div>
+        <div class="hero-card">
+          <div class="metric">
+            <span class="metric-number">10</span>
+            <span class="metric-label">clinical benchmark datasets</span>
+          </div>
+          <div class="metric">
+            <span class="metric-number">10+</span>
+            <span class="metric-label">survival models</span>
+          </div>
+          <div class="metric">
+            <span class="metric-number">5-fold</span>
+            <span class="metric-label">cross-validation</span>
+          </div>
+          <div class="metric">
+            <span class="metric-number">3</span>
+            <span class="metric-label">explanation-stability views</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="overview" class="section">
+      <div class="container">
+        <div class="section-heading">
+          <span>01</span>
+          <h2>Why FSA-Bench?</h2>
+        </div>
+        <div class="two-col">
+          <div>
+            <p class="lead">
+              Clinical time-to-event data are routinely collected across multiple
+              healthcare institutions but are rarely pooled because of privacy
+              constraints. Federated Survival Analysis enables collaborative modeling
+              without sharing patient-level data, but model reliability, calibration,
+              robustness, and explanation consistency remain insufficiently understood.
+            </p>
+          </div>
+          <div class="callout">
+            <strong>Benchmark goal</strong>
+            <p>
+              Evaluate statistical, machine learning, and deep learning survival models
+              under heterogeneous, non-IID, multi-institutional federated settings.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="figure-section">
+      <div class="container">
+        <figure class="paper-figure">
+          <img src="assets/framework.png" alt="FSA-Bench framework overview from the paper" />
+          <figcaption>FSA-Bench framework: data collection, preparation, federated configuration, survival models, training, evaluation, statistical analysis, interpretability, and reporting.</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <section id="benchmark" class="section alt">
+      <div class="container">
+        <div class="section-heading">
+          <span>02</span>
+          <h2>Benchmark datasets</h2>
+        </div>
+        <p class="section-intro">
+          FSA-Bench evaluates ten real-world survival datasets spanning cancer,
+          infectious disease, organ failure, and other clinical domains. Naturally
+          occurring institutional or geographic partitions are preserved whenever
+          available to reflect realistic federated heterogeneity.
+        </p>
+
+        <div class="dataset-grid">
+          <article class="dataset-card"><h3>TCGA</h3><p>6,084 samples · 283 variables · 7 clients</p><span>Cancer</span></article>
+          <article class="dataset-card"><h3>Aids2</h3><p>2,839 samples · 3 variables · 4 clients</p><span>Infectious</span></article>
+          <article class="dataset-card"><h3>LeukSurv</h3><p>1,043 samples · 4 variables · 24 clients</p><span>Cancer</span></article>
+          <article class="dataset-card"><h3>Pbc3</h3><p>349 samples · 12 variables · 6 clients</p><span>Organ / liver</span></article>
+          <article class="dataset-card"><h3>Dialysis</h3><p>6,805 samples · 2 variables · 67 clients</p><span>Organ failure</span></article>
+          <article class="dataset-card"><h3>d.oropha.rec</h3><p>192 samples · 12 variables · 6 clients</p><span>Cancer</span></article>
+          <article class="dataset-card"><h3>cgd</h3><p>128 samples · 8 variables · 4 clients</p><span>Infectious</span></article>
+          <article class="dataset-card"><h3>uis</h3><p>628 samples · 7 variables · 2 clients</p><span>Other</span></article>
+          <article class="dataset-card"><h3>scania</h3><p>1,040 samples · 4 variables · 5 clients</p><span>Other</span></article>
+          <article class="dataset-card"><h3>SEER</h3><p>25,749 samples · 11 variables · 3 clients</p><span>Cancer</span></article>
+        </div>
+      </div>
+    </section>
+
+    <section id="models" class="section">
+      <div class="container">
+        <div class="section-heading">
+          <span>03</span>
+          <h2>Survival models</h2>
+        </div>
+        <div class="model-columns">
+          <div class="model-group">
+            <div class="group-label">Classical statistical</div>
+            <h3>Federated survival models</h3>
+            <ul>
+              <li>Federated Kaplan–Meier (Fed. KM)</li>
+              <li>Federated AFT–Weibull</li>
+              <li>Federated CoxPH</li>
+            </ul>
+          </div>
+          <div class="model-group">
+            <div class="group-label">Neural survival</div>
+            <h3>Statistical + machine learning</h3>
+            <ul>
+              <li>NNPH</li>
+              <li>NNnPH</li>
+              <li>DeepPseudo</li>
+              <li>DeepHit</li>
+            </ul>
+          </div>
+          <div class="model-group featured">
+            <div class="group-label">FedPseudo</div>
+            <h3>Federated deep learning</h3>
+            <ul>
+              <li><strong>FedPDNN</strong> — feed-forward</li>
+              <li><strong>FedPLSTM</strong> — LSTM-based</li>
+              <li><strong>FedPAttn</strong> — Bi-LSTM + global attention</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section dark">
+      <div class="container">
+        <div class="section-heading light">
+          <span>04</span>
+          <h2>Evaluation framework</h2>
+        </div>
+        <div class="evaluation-grid">
+          <div><b>Discrimination</b><span>Time-dependent C-index ↑</span></div>
+          <div><b>Calibration</b><span>Integrated Brier Score ↓</span></div>
+          <div><b>Probabilistic accuracy</b><span>Negative log-likelihood ↓</span></div>
+          <div><b>Ranking consistency</b><span>Spearman ρ · Kendall τ</span></div>
+          <div><b>Stability</b><span>Cross-partition consistency</span></div>
+          <div><b>Top-feature agreement</b><span>Jaccard similarity</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="results" class="section">
+      <div class="container">
+        <div class="section-heading">
+          <span>05</span>
+          <h2>Key findings</h2>
+        </div>
+        <div class="findings">
+          <article>
+            <span class="finding-number">01</span>
+            <h3>Federated ≈ centralized discrimination</h3>
+            <p>
+              Federated models achieve discrimination comparable to centralized
+              approaches across many datasets, particularly for larger cohorts such
+              as TCGA, LeukSurv, SEER, and Dialysis.
+            </p>
+          </article>
+          <article>
+            <span class="finding-number">02</span>
+            <h3>Censoring matters</h3>
+            <p>
+              Predictive performance generally declines as censoring increases,
+              with a more pronounced decline beyond approximately 50% censoring.
+            </p>
+          </article>
+          <article>
+            <span class="finding-number">03</span>
+            <h3>Deep federated models remain competitive</h3>
+            <p>
+              FedPDNN, FedPLSTM, and FedPAttn maintain competitive discrimination
+              and calibration across heterogeneous and highly censored settings.
+            </p>
+          </article>
+          <article>
+            <span class="finding-number">04</span>
+            <h3>No single model wins everything</h3>
+            <p>
+              Predictive performance and explanation stability provide complementary
+              evidence. Fed CoxPH is especially strong in ranking consistency, while
+              FedPLSTM and FedPAttn provide stable explanations among deep models.
+            </p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="figure-section">
+      <div class="container">
+        <figure class="paper-figure">
+          <img src="assets/performance.png" alt="Centralized and federated C-index comparison" />
+          <figcaption>Time-dependent C-index comparison between centralized and federated learning across the ten benchmark datasets.</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <section id="stability" class="section alt">
+      <div class="container">
+        <div class="section-heading">
+          <span>06</span>
+          <h2>Explanation stability</h2>
+        </div>
+        <div class="two-col">
+          <div>
+            <p class="lead">
+              FSA-Bench extends evaluation beyond predictive accuracy using SurvSHAP
+              and rank-based agreement metrics. Feature-importance consistency is
+              evaluated at the fold, site, and centralized-versus-federated
+              partition levels.
+            </p>
+          </div>
+          <div class="stability-list">
+            <div><b>Fold-level</b><span>Consistency across cross-validation folds</span></div>
+            <div><b>Site-level</b><span>Consistency across heterogeneous clients</span></div>
+            <div><b>Partition-level</b><span>Centralized vs. federated explanations</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="figure-section">
+      <div class="container">
+        <figure class="paper-figure">
+          <img src="assets/overall-insights.png" alt="Overall benchmark insights figure" />
+          <figcaption>Overall benchmark trends across discrimination, probabilistic accuracy, calibration, censoring, and federation scale.</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <section class="section dark">
+      <div class="container">
+        <div class="section-heading light">
+          <span>07</span>
+          <h2>Statistical comparison</h2>
+        </div>
+        <div class="stat-box">
+          <p>
+            Pairwise two-sided Wilcoxon signed-rank tests compare FedPAttn with
+            eight federated survival baselines. Holm correction is applied across
+            the eight comparisons.
+          </p>
+          <div class="stat-results">
+            <div><strong>Fed. KM</strong><span>10–0 wins · p<sub>Holm</sub> = 0.0156</span></div>
+            <div><strong>DeepPseudo</strong><span>9–1 wins · p<sub>Holm</sub> = 0.0410</span></div>
+            <div><strong>DeepHit</strong><span>7–1 wins · p<sub>Holm</sub> = 0.1406</span></div>
+            <div><strong>LinearPH</strong><span>6–2 wins · p<sub>Holm</sub> = 0.2734</span></div>
+          </div>
+          <p class="small">
+            Statistical significance is evaluated using dataset-level mean C-index
+            values as paired experimental units; missing results are excluded from
+            the corresponding comparison.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section id="citation" class="section">
+      <div class="container">
+        <div class="section-heading">
+          <span>08</span>
+          <h2>Citation</h2>
+        </div>
+        <div class="citation-box">
+<pre><code>@inproceedings{ahmed2026fsabench,
+  title     = {FSA-Bench: Benchmarking Federated Survival Models},
+  author    = {Ahmed, Sultan and Purushotham, Sanjay},
+  booktitle = {Proceedings of Machine Learning Research},
+  year      = {2026}
+}</code></pre>
+          <button id="copyCitation" class="btn primary">Copy citation</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="container footer-inner">
+      <div><strong>FSA-Bench</strong><br /><span>Benchmarking Federated Survival Models</span></div>
+      <div>
+        <a href="https://github.com/umbc-sanjaylab/FSA_Bench" target="_blank" rel="noopener">GitHub ↗</a>
+      </div>
+    </div>
+  </footer>
+
+  <script src="asset/js/script.js"></script>
+</body>
+</html>
