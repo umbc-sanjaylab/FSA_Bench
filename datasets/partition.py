@@ -50,10 +50,7 @@ def sample_iid(data, num_centers, seed_no):
     idxs = rng.permutation(n)
     batch_idxs = np.array_split(idxs, num_centers)
     dict_center_idxs = {i: batch_idxs[i] for i in range(num_centers)}
-    return dict_center_idxs 
-
-################################################################################################################################
-
+    return dict_center_idxs  
 
 ################################################## Non-IID data Partition #####################################################
 
