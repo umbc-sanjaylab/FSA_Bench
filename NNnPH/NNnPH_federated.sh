@@ -16,19 +16,14 @@ federated_datasets=("TCGA" "Aids2" "LeukSurv" "Pbc3" "d.oropha.rec" "cgd" "uis" 
 total_fold=(5 5 3 3 3 3 5 5 5 3)            # Number of folds
 total_center=(7 4 24 6 6 4 2 5 3 67)        # Number of clients
 total_batch_size=(128 64 32 32 32 32 64 32 128 32) # Federated learning batch sizes   
-
-################################################### distributed dataset #########################################################
-federated_datasets=("LeukSurv" "Pbc3" "d.oropha.rec" "cgd" "uis" "scania" "Dialysis" "Aids2")
-total_fold=(3 3 3 3 5 5 3 5)                       # Number of folds
-total_center=(24 6 6 4 2 5 67 4)                   # Number of clients
-total_batch_size=(32 32 32 32 64 32 32 64)         # Federated learning batch sizes
+ 
 
 # set DRY_RUN=1 to only print commands
 DRY_RUN="${DRY_RUN:-0}"
 
 # NEW: run only 4 datasets per job based on an argument - bash run.sh 1   # first 3 datasets
 GROUP_ID="${1:-1}"
-GROUP_SIZE=12 
+GROUP_SIZE=10
 
 # Validate GROUP_ID is a positive integer
 if ! [[ "$GROUP_ID" =~ ^[1-9][0-9]*$ ]]; then

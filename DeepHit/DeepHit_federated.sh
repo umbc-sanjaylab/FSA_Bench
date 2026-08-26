@@ -1,51 +1,17 @@
 #!/usr/bin/env bash 
-export CUDA_VISIBLE_DEVICES=0
-
-# Limit CPU usage
-CPU_CORES="${CPU_CORES:-0-3}"     # use only logical CPU cores 0,1,2,3
-CPU_THREADS="${CPU_THREADS:-4}"  # number of CPU threads allowed
-
-export OMP_NUM_THREADS="$CPU_THREADS"
-export MKL_NUM_THREADS="$CPU_THREADS"
-export OPENBLAS_NUM_THREADS="$CPU_THREADS"
-export NUMEXPR_NUM_THREADS="$CPU_THREADS"
-export BLIS_NUM_THREADS="$CPU_THREADS"
-export VECLIB_MAXIMUM_THREADS="$CPU_THREADS"
-
-# PyTorch-specific thread control
-export TORCH_NUM_THREADS="$CPU_THREADS"
-set -euo pipefail
+export CUDA_VISIBLE_DEVICES=0 
  
 DATADIR="/home/il66977@ad.umbc.edu/Benchmarking_FSA/datasets/processed_data/federated_data"
 LOGROOT="/home/il66977@ad.umbc.edu/Benchmarking_FSA/DeepHit/logs/federated_data/federated"
 MODELDIR_ROOT="/home/il66977@ad.umbc.edu/Benchmarking_FSA/DeepHit/models/federated_data/federated"
 
-mkdir -p "$LOGROOT" "$MODELDIR_ROOT"
- 
-
-################################################### distributed dataset #########################################################
-federated_datasets=("TCGA" "Aids2" "LeukSurv" "Pbc3" "d.oropha.rec" "cgd" "uis" "scania" "seer" "Dialysis")
-total_fold=(5 5 3 3 3 3 5 5 5 3)                   # Number of folds
-total_center=(7 4 24 6 6 4 2 5 3 67)               # Number of clients
-total_batch_size=(128 64 32 32 32 32 64 32 128 32) # Federated learning batch sizes  
-
-
-################################################### distributed dataset #########################################################
-federated_datasets=("Aids2" "LeukSurv" "Pbc3" "d.oropha.rec" "cgd" "uis" "scania" "Dialysis")
-total_fold=(5 3 3 3 3 5 5 3)                   # Number of folds
-total_center=(4 24 6 6 4 2 5 67)               # Number of clients
-total_batch_size=(64 32 32 32 32 64 32 32) # Federated learning batch sizes  
+mkdir -p "$LOGROOT" "$MODELDIR_ROOT"  
 
 ################################################### distributed dataset #########################################################
 federated_datasets=("seer" "Aids2" "LeukSurv" "Pbc3" "d.oropha.rec" "cgd" "uis" "scania" "Dialysis")
 total_fold=(5 5 3 3 3 3 5 5 3)                   # Number of folds
 total_center=(3 4 24 6 6 4 2 5 67)               # Number of clients
 total_batch_size=(128 64 32 32 32 32 64 32 32) # Federated learning batch sizes  
-
-federated_datasets=("Pbc3" "LeukSurv" "d.oropha.rec" "cgd" "uis" "scania" "Dialysis" "Aids2")
-total_fold=(3 3 3 3 5 5 3 5)                   # Number of folds
-total_center=(6 24 6 4 2 5 67 4)               # Number of clients
-total_batch_size=(32 32 32 32 64 32 32 64) # Federated learning batch sizes  
 
 models=("DeepHit")
 
@@ -54,7 +20,7 @@ DRY_RUN="${DRY_RUN:-0}"
 
 # NEW: run only 3 datasets per job based on an argument - bash run.sh 1   # first 3 datasets
 GROUP_ID="${1:-1}" # default group = 1
-GROUP_SIZE=12
+GROUP_SIZE=10
 
 # Validate GROUP_ID is a positive integer
 if ! [[ "$GROUP_ID" =~ ^[1-9][0-9]*$ ]]; then

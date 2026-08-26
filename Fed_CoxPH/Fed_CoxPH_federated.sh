@@ -7,19 +7,13 @@ DATADIR="/home/il66977@ad.umbc.edu/Benchmarking_FSA/datasets/processed_data/fede
 LOGROOT="/home/il66977@ad.umbc.edu/Benchmarking_FSA/Fed_CoxPH/logs/federated_data/federated"
 MODELDIR_ROOT="/home/il66977@ad.umbc.edu/Benchmarking_FSA/Fed_CoxPH/models/federated_data/federated"
 
-mkdir -p "$LOGROOT" "$MODELDIR_ROOT"
-
-############################################### Distributed datasets ################################################
-federated_datasets=("LeukSurv" "Pbc3" "d.oropha.rec" "cgd" "uis" "scania" "seer" "Dialysis")
-total_fold=(3 3 3 3 5 5 5 3)          # Number of folds
-total_center=(24 6 6 4 2 5 3 67)      # Number of clients
-total_batch_size=(4 4 4 8 16 8 64 32) # Federated learning 
+mkdir -p "$LOGROOT" "$MODELDIR_ROOT" 
   
-############################################### Distributed datasets ################################################
+################################################### distributed dataset #########################################################
 federated_datasets=("seer" "Aids2" "LeukSurv" "Pbc3" "d.oropha.rec" "cgd" "uis" "scania" "Dialysis")
-total_fold=(5 5 3 3 3 3 5 5 3)            # Number of folds
-total_center=(3 4 24 6 6 4 2 5 67)        # Number of clients
-total_batch_size=(128 64 32 32 32 32 64 32 32) # Federated learning batch sizes 
+total_fold=(5 5 3 3 3 3 5 5 3)                   # Number of folds
+total_center=(3 4 24 6 6 4 2 5 67)               # Number of clients
+total_batch_size=(128 64 32 32 32 32 64 32 32)   # Federated learning batch sizes  
 
 # Optional: set DRY_RUN=1 to only print commands
 DRY_RUN="${DRY_RUN:-0}"

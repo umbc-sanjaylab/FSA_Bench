@@ -7,39 +7,16 @@ DATADIR="/home/il66977@ad.umbc.edu/Benchmarking_FSA/datasets/processed_data/fede
 LOGROOT="/home/il66977@ad.umbc.edu/Benchmarking_FSA/DeepPseudo/logs/federated_data/centralized/"
 MODELDIR_ROOT="/home/il66977@ad.umbc.edu/Benchmarking_FSA/DeepPseudo/models/federated_data/centralized/"
 
-mkdir -p "$LOGROOT" "$MODELDIR_ROOT"
-high_dimensional_datasets=("ovarian1data" "Ovarian2_data" "GE1_data" "GE2_data" "GE3_data" "GE4_data" "GE6_data" "Melanoma_nano_data")  
-high_censored_datasets=("dataDIVAT1" "dataDIVAT2" "dataDIVAT3" "divorce" "hdfail" "flchain" "prostateSurvival" "FRTCS" "vlbw" "nwtco" "actg")  
+mkdir -p "$LOGROOT" "$MODELDIR_ROOT"   
 
-############################################################ large datasets #####################################################
-large_datasets=("UnempDur" "grace" "Framingham" "support2" "acath" "TRACE" "metabrick" "rdata" "rott2")
-total_fold=(5 5 5 5 5 5 5 5 5) 
-total_batch_size=(64 32 64 128 64 32 32 32 64) 
-
-############################################################ omics datasets #####################################################
-omics_datasets=("ovarian1data" "Ovarian2_data" "GE1_data" "GE2_data" "GE3_data" "GE4_data" "GE5_data" "GE6_data" "Melanoma_itraq_data" "Melanoma_nano_data" "gse4335" "AML_Bull" "dataOvarian1" "gse3143" "gse1992" "MCLcleaned" "metabric-hd" "vdv" "chop" "phpl04K8a" "Bergamaschi")
-total_fold=(1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1)
-total_batch_size=(16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16) 
-
-############################################################ small datasets #####################################################
-small_datasets=("veteran" "follic" "pbc" "Lung_data" "Melanoma_clinical_data" "hepatoCellular" "glioma" "wpbc" "ova" "Unemployment" "Melanoma" "micro.censure" "e1684" "zinc" "stagec" "Z243" "nki70" "mgus" "whas500" "ovarian" "breast" "pharmacoSmoking" "burn" "cost" "GBSG2" "FRTCS" "vlbw")
-total_fold=(3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3)
-total_batch_size=(64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64)
-
-############################################################ federated datasets #####################################################
-federated_datasets=("LeukSurv")      # dataset name  
-total_fold=(3)                   # Number of folds
-total_batch_size=(64)            # Federated learning batch sizes 
-
-federated_datasets=("LeukSurv" "Pbc3" "cgd" "d.oropha.rec"  "uis" "scania" "Dialysis" "Aids2")
-total_fold=(3 3 3 3 5 5  3 5)                   # Number of folds
-# total_center=(24 6 4 6 2 5 67 4)                # Number of clients
-total_batch_size=(32 32 32 32 64 32  32 64)     # Federated learning batch sizes   
-
+############################################################ federated datasets #####################################################  
+federated_datasets=("TCGA" "Aids2" "LeukSurv" "Pbc3" "d.oropha.rec" "cgd" "uis" "scania" "seer" "Dialysis")
+total_fold=(5 5 3 3 3 3 5 5 5 3)                   # Number of folds 
+total_batch_size=(128 64 32 32 32 32 64 32 128 32) # Federated learning batch sizes    
 
 # command to run only 3 datasets per job based on an argument
 GROUP_ID="${1:-1}" # default group = 1
-GROUP_SIZE=28
+GROUP_SIZE=10
 
 START_INDEX=$(((GROUP_ID - 1) * GROUP_SIZE))
 END_INDEX=$((START_INDEX + GROUP_SIZE - 1))

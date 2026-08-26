@@ -7,44 +7,14 @@ DATADIR="/home/il66977@ad.umbc.edu/Benchmarking_FSA/datasets/processed_data/fede
 LOGROOT="/home/il66977@ad.umbc.edu/Benchmarking_FSA/NNnPH/logs/federated_data/centralized"
 MODELDIR_ROOT="/home/il66977@ad.umbc.edu/Benchmarking_FSA/NNnPH/models/federated_data/centralized"
 
-mkdir -p "$LOGROOT" "$MODELDIR_ROOT"
-high_censored_datasets=("dataDIVAT1" "dataDIVAT2" "dataDIVAT3" "divorce" "hdfail" "flchain" "prostateSurvival" "FRTCS" "vlbw" "nwtco" "actg")
-high_dimensional_datasets=("ovarian1data" "Ovarian2_data" "GE1_data" "GE2_data" "GE3_data" "GE4_data" "GE6_data" "Melanoma_nano_data")
-
-############################################################ large datasets #####################################################
-large_datasets=("UnempDur" "grace" "Framingham" "support2" "acath" "TRACE" "metabrick" "rdata" "rott2")
-total_fold=(5 5 5 5 5 5 5 5 5)
-total_batch_size=(32 16 32 64 32 16 32 16 32)  
-
-############################################################ large datasets #####################################################
-large_datasets=("UnempDur" "grace" "Framingham" "support2" "acath" "TRACE" "metabrick" "rdata" "rott2")
-total_fold=(5 5 5 5 5 5 5 5 5)
-total_batch_size=(32 16 32 64 32 16 32 16 32)
-
-
-############################################################ small datasets #####################################################
-small_datasets=("veteran" "follic" "pbc" "Lung_data" "Melanoma_clinical_data" "hepatoCellular" "glioma" "wpbc" "ova" "Unemployment" "Melanoma" "micro.censure" "e1684" "zinc" "stagec" "Z243" "nki70" "mgus" "whas500" "ovarian" "breast" "pharmacoSmoking" "burn" "cost" "GBSG2" "FRTCS" "vlbw")
-total_fold=(3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3)
-total_batch_size=(64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64)
+mkdir -p "$LOGROOT" "$MODELDIR_ROOT"    
 
 
 ################################################### distributed dataset #########################################################
 federated_datasets=("TCGA" "Aids2" "LeukSurv" "Pbc3" "d.oropha.rec" "cgd" "uis" "scania" "seer" "Dialysis")
 total_fold=(5 5 3 3 3 3 5 5 5 3)                   # Number of folds
 total_center=(7 4 24 6 6 4 2 5 3 67)               # Number of clients
-total_batch_size=(128 64 32 32 32 32 64 32 128 32) # Federated learning batch sizes 
-
-
-############################################################ small datasets ##################################################### 
-small_datasets=("veteran" "follic" "pbc" "Lung_data" "hepatoCellular" "wpbc" "ova" "Unemployment" "Melanoma" "micro.censure" "e1684" "zinc" "stagec"  "nki70" "mgus" "whas500" "pharmacoSmoking" "burn" "cost" "GBSG2" "FRTCS" "vlbw" "glioma" "breast" "ovarian" "Melanoma_clinical_data")
-total_fold=(3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3  3 3 3 3 3)
-total_batch_size=(64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64)
-total_center=(3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3  3 3 3 3 3 3 2 2 2 2)  
-
-federated_datasets=("seer")  # SEER dataset 
-total_fold=(5)               # Number of folds
-total_center=(3)             # Number of clients
-total_batch_size=(128)       # Federated learning batch sizes
+total_batch_size=(128 64 32 32 32 32 64 32 128 32) # Federated learning batch sizes  
  
 models=("NNnPH")
 

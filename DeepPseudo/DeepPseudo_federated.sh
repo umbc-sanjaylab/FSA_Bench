@@ -8,28 +8,11 @@ MODELDIR_ROOT="/home/il66977@ad.umbc.edu/Benchmarking_FSA/DeepPseudo/models/fede
 
 mkdir -p "$LOGROOT" "$MODELDIR_ROOT"
 
-############################################################ federated datasets #####################################################
-federated_datasets=("TCGA" "Aids2" "LeukSurv" "Pbc3" "d.oropha.rec" "cgd" "uis" "scania" "seer" "Dialysis")
-total_fold=(5 5 3 3 3 3 5 5 5 3)     # Number of folds
-total_center=(7 4 24 6 6 4 2 5 3 67) # Number of clients
-total_batch_size=(32 32 4 4 4 4 16 8 64 32)    # Federated learning batch sizes
-
-############################################################ federated datasets #####################################################
- 
-federated_datasets=("Aids2" "LeukSurv" "Pbc3" "d.oropha.rec" "cgd" "uis" "scania" "Dialysis")
-total_fold=(5 3 3 3 3 5 5  3)                   # Number of folds
-total_center=(4 24 6 6 4 2 5 67)                # Number of clients
-total_batch_size=(64 32 32 32 32 64 32  32)     # Federated learning batch sizes  
-
-federated_datasets=("LeukSurv" "Pbc3" "d.oropha.rec" "cgd" "uis" "scania" "Dialysis" "Aids2")
-total_fold=(3 3 3 3 5 5  3 5)                   # Number of folds
-total_center=(24 6 6 4 2 5 67 4)                # Number of clients
-total_batch_size=(32 32 32 32 64 32  32 64)     # Federated learning batch sizes   
-
-federated_datasets=("LeukSurv" "Pbc3" "cgd" "d.oropha.rec"  "uis" "scania" "Dialysis" "Aids2")
-total_fold=(3 3 3 3 5 5  3 5)                   # Number of folds
-total_center=(24 6 4 6 2 5 67 4)                # Number of clients
-total_batch_size=(32 32 32 32 64 32  32 64)     # Federated learning batch sizes   
+################################################### distributed dataset #########################################################
+federated_datasets=("seer" "Aids2" "LeukSurv" "Pbc3" "d.oropha.rec" "cgd" "uis" "scania" "Dialysis")
+total_fold=(5 5 3 3 3 3 5 5 3)                   # Number of folds
+total_center=(3 4 24 6 6 4 2 5 67)               # Number of clients
+total_batch_size=(128 64 32 32 32 32 64 32 32) # Federated learning batch sizes  
 
 models=("DeepPseudo")
 
