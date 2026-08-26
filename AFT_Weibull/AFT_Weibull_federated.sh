@@ -7,30 +7,7 @@ DATADIR="/home/il66977@ad.umbc.edu/Benchmarking_FSA/datasets/processed_data/fede
 LOGROOT="/home/il66977@ad.umbc.edu/Benchmarking_FSA/AFT_Weibull/logs/federated_data/federated"
 MODELDIR_ROOT="/home/il66977@ad.umbc.edu/Benchmarking_FSA/AFT_Weibull/models/federated_data/federated"
 
-mkdir -p "$LOGROOT" "$MODELDIR_ROOT"
-
-# Distributed datasets
-# federated_datasets=("LeukSurv" "Pbc3" "d.oropha.rec" "cgd" "uis" "scania" "seer" "Dialysis")
-# total_fold=(3 3 3 3 5 5 5 3)          # Number of folds
-# total_center=(24 6 6 4 2 5 3 67)      # Number of clients
-# total_batch_size=(4 4 4 4 16 8 64 32) # Federated learning batch sizes
-
-# # Distributed datasets
-# federated_datasets=("Dialysis")
-# total_fold=(3)        # Number of folds
-# total_center=(67)     # Number of clients
-# total_batch_size=(32) # Federated learning batch sizes
-
-# federated_datasets=("LeukSurv")      # dataset name  
-# total_fold=(3)                   # Number of folds
-# total_batch_size=(64)            # Federated learning batch sizes
-# total_center=(24)
-
-################################################### distributed dataset #########################################################
-federated_datasets=("TCGA" "Aids2" "LeukSurv" "Pbc3" "d.oropha.rec" "cgd" "uis" "scania" "seer" "Dialysis")
-total_fold=(5 5 3 3 3 3 5 5 5 3)                   # Number of folds
-total_center=(7 4 24 6 6 4 2 5 3 67)               # Number of clients
-total_batch_size=(128 64 32 32 32 32 64 32 128 32) # Federated learning batch sizes 
+mkdir -p "$LOGROOT" "$MODELDIR_ROOT"  
 
 ################################################### distributed dataset #########################################################
 federated_datasets=("Pbc3" "d.oropha.rec" "cgd" "uis" "scania" "Dialysis" "Aids2")
@@ -45,7 +22,7 @@ DRY_RUN="${DRY_RUN:-0}"
 
 # NEW: run only 3 datasets per job based on an argument - bash run.sh 1   # first 3 datasets
 GROUP_ID="${1:-1}" # default group = 1
-GROUP_SIZE=12
+GROUP_SIZE=10
 
 # Validate GROUP_ID is a positive integer
 if ! [[ "$GROUP_ID" =~ ^[1-9][0-9]*$ ]]; then
