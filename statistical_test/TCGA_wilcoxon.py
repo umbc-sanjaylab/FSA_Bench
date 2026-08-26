@@ -1,396 +1,263 @@
-import pandas as pd
 import numpy as np
-from scipy.stats import wilcoxon
+import pandas as pd
+from scipy.stats import wilcoxon, rankdata
 from statsmodels.stats.multitest import multipletests
 
 
-# ============================================================
-# Load results
-# ============================================================
+######################### DATA #########################
 
-RESULT_FILE = "data/TCGA.csv"
+data = {
+    "Dataset": [
+        "TCGA", "Aids2", "LeukSurv", "Pbc3", "d.oropha.rec",
+        "cgd", "uis", "scania", "seer", "Dialysis"
+    ],
 
-df = pd.read_csv(RESULT_FILE)
+    "Fed. KM": [
+        0.5004, 0.5012, 0.5062, 0.5000, 0.5015,
+        0.5000, 0.5019, 0.5000, 0.5035, 0.5113
+    ],
+
+    "AFT Weibull": [
+        0.7480, 0.5012, 0.6594, 0.4771, 0.6472,
+        0.4762, 0.5379, 0.4875, 0.8078, 0.6141
+    ],
+
+    "Fed. CoxPH": [
+        0.7523, 0.5539, 0.6635, 0.4260, 0.6593,
+        0.5118, 0.5644, 0.4844, 0.8068, 0.6549
+    ],
+
+    "LinearPH": [
+        0.7506, 0.5259, 0.6274, np.nan, 0.6094,
+        0.5769, 0.5516, 0.4906, 0.7855, np.nan
+    ],
+
+    "DeepPseudo": [
+        0.7360, 0.5322, 0.5572, 0.5044, 0.5080,
+        0.5476, 0.5015, 0.5050, 0.7380, 0.5299
+    ],
+
+    "DeepHit": [
+        0.6781, 0.5517, 0.4612, np.nan, 0.5896,
+        0.5538, 0.5074, 0.5191, 0.7140, np.nan
+    ],
+
+    "NNPH": [
+        0.7357, 0.5214, 0.6450, np.nan, 0.6020,
+        0.6797, 0.5238, 0.5009, 0.8200, np.nan
+    ],
+
+    "NNnPH": [
+        0.7157, 0.5474, 0.6431, np.nan, 0.6409,
+        0.6391, 0.5097, 0.5033, 0.8178, np.nan
+    ],
+
+    "FedPDNN": [
+        0.7113, 0.5630, 0.6686, 0.5679, 0.6487,
+        0.6800, 0.5192, 0.5157, 0.7787, 0.5547
+    ],
+
+    "FedPLSTM": [
+        0.7151, 0.5548, 0.6706, 0.5653, 0.6423,
+        0.5984, 0.5284, 0.5054, 0.8039, 0.5701
+    ],
+
+    "FedPAttn": [
+        0.7297, 0.5559, 0.6735, 0.5905, 0.6396,
+        0.6147, 0.5407, 0.5087, 0.8150, 0.5942
+    ]
+}
+
+df = pd.DataFrame(data)
 
 
-# ============================================================
-# Models
-# ============================================================
+######################### COMPARATORS #########################
 
-PROPOSED_MODELS = [
-    "FedPDNN",
-    "FedPLSTM",
-    "FedPAttn"
-]
-
-BASELINE_MODELS = [
-    "Fed_KM",
-    "AFT_Weibull",
-    "CoxPH",
+comparators = [
+    "Fed. KM",
+    "AFT Weibull",
+    "Fed. CoxPH",
+    "LinearPH",
     "DeepPseudo",
     "DeepHit",
-    "LinearPH",
     "NNPH",
     "NNnPH"
 ]
 
-PARTITIONS = [
-    "centralized",
-    "federated"
-]
+ 
+######################### FUNCTION FOR WILCOXON + RANK-BISERIAL CORRELATION #########################
 
-
-# ============================================================
-# Helper function
-# ============================================================
-
-def run_wilcoxon(x, y):
+def wilcoxon_comparison(fedpattn, comparator):
     """
-    Paired two-sided Wilcoxon signed-rank test.
+    Compare FedPAttn against one comparator.
 
-    Removes pairs where either model has NaN.
+    Positive difference = FedPAttn performs better.
     """
 
-    paired = pd.concat(
-        [x.rename("x"), y.rename("y")],
-        axis=1
-    ).dropna()
+    # Keep only paired observations
+    mask = fedpattn.notna() & comparator.notna()
 
-    x = paired["x"].values
-    y = paired["y"].values
+    x = fedpattn[mask].to_numpy()
+    y = comparator[mask].to_numpy()
 
-    n = len(x)
+    # FedPAttn - Comparator
+    differences = x - y
 
-    if n < 2:
-        return np.nan, np.nan, n
+    # Remove exact zero differences
+    differences = differences[differences != 0]
 
-    # If all paired differences are zero,
-    # Wilcoxon cannot be computed normally.
-    if np.allclose(x - y, 0):
-        return 0.0, 1.0, n
+    n = len(differences)
 
-    try:
-        statistic, p_value = wilcoxon(
-            x,
-            y,
-            alternative="greater",
-            zero_method="wilcox",
-            method="auto"
-        )
+    if n == 0:
+        return {
+            "n": 0,
+            "wins": 0,
+            "losses": 0,
+            "W": np.nan,
+            "p": np.nan,
+            "Med. ΔC": np.nan,
+            "r_rb": np.nan
+        }
+ 
+    ######################### Wilcoxon signed-rank test #########################
 
-        return statistic, p_value, n
-
-    except ValueError:
-        return np.nan, np.nan, n
-
-
-# ============================================================
-# 1. DATASET-LEVEL WILCOXON
-# ============================================================
-
-dataset_results = []
-
-
-for partition in PARTITIONS:
-
-    partition_df = df[
-        df["partition"] == partition
-    ].copy()
-
-    # --------------------------------------------------------
-    # Average folds within each dataset
-    # --------------------------------------------------------
-
-    dataset_mean_df = (
-        partition_df
-        .groupby("dataset")[PROPOSED_MODELS + BASELINE_MODELS]
-        .mean()
-        .reset_index()
+    result = wilcoxon(
+        differences,
+        alternative="two-sided",
+        zero_method="wilcox",
+        method="auto"
     )
 
-    # --------------------------------------------------------
-    # Compare each proposed model against every baseline
-    # --------------------------------------------------------
+    W = result.statistic
+    p = result.pvalue
 
-    for proposed_model in PROPOSED_MODELS:
+   
+    ########################## W-L = FedPAttn wins - losses  ######################### 
 
-        for baseline_model in BASELINE_MODELS:
+    wins = np.sum(differences > 0)
+    losses = np.sum(differences < 0)
 
-            statistic, p_value, n = run_wilcoxon(
-                dataset_mean_df[proposed_model],
-                dataset_mean_df[baseline_model]
-            )
+    
+    ########################## Rank-biserial correlation  ############################ 
+    #                       r_rb = (W+ - W-) / (W+ + W-)
+    ##################################################################################
 
-            if n > 0:
-                mean_proposed = (
-                    dataset_mean_df[proposed_model]
-                    .dropna()
-                    .mean()
-                )
+    ranks = rankdata(np.abs(differences), method="average")
 
-                mean_baseline = (
-                    dataset_mean_df[baseline_model]
-                    .dropna()
-                    .mean()
-                )
-            else:
-                mean_proposed = np.nan
-                mean_baseline = np.nan
+    W_plus = np.sum(ranks[differences > 0])
+    W_minus = np.sum(ranks[differences < 0])
 
-            dataset_results.append({
-                "partition": partition,
-                "level": "dataset",
-                "proposed_model": proposed_model,
-                "baseline_model": baseline_model,
-                "n": n,
-                "proposed_mean": mean_proposed,
-                "baseline_mean": mean_baseline,
-                "mean_difference": (
-                    mean_proposed - mean_baseline
-                    if n > 0 else np.nan
-                ),
-                "statistic": statistic,
-                "p_value": p_value
-            })
+    r_rb = (W_plus - W_minus) / (W_plus + W_minus)
 
+     
+    ########################## Median C-index difference ################################  
 
-dataset_results = pd.DataFrame(dataset_results)
+    median_delta = np.median(differences)
 
+    return {
+        "n": n,
+        "wins": wins,
+        "losses": losses,
+        "W": W,
+        "p": p,
+        "Med. ΔC": median_delta,
+        "r_rb": r_rb
+    }
 
-# ============================================================
-# Holm-Bonferroni correction
-#
-# Correction is performed separately for:
-#     centralized + proposed model
-#     federated + proposed model
-#
-# Therefore each proposed model has its own family of
-# baseline comparisons within each partition.
-# ============================================================
+ 
+######################################## 4. RUN ALL COMPARISONS  ########################## 
 
-dataset_results["p_holm"] = np.nan
-dataset_results["significant"] = False
+results = []
+
+for comparator in comparators:
+
+    result = wilcoxon_comparison(
+        df["FedPAttn"],
+        df[comparator]
+    )
+
+    result["Comparator"] = comparator 
+    results.append(result)
 
 
-for partition in PARTITIONS:
+results_df = pd.DataFrame(results)
+ 
+######################################## 5. HOLM CORRECTION ###################################
 
-    for proposed_model in PROPOSED_MODELS:
+results_df["p_Holm"] = np.nan
 
-        mask = (
-            (dataset_results["partition"] == partition) &
-            (dataset_results["proposed_model"] == proposed_model)
-        )
+valid = results_df["p"].notna()
 
-        valid = (
-            mask &
-            dataset_results["p_value"].notna()
-        )
+results_df.loc[valid, "p_Holm"] = multipletests(
+    results_df.loc[valid, "p"],
+    method="holm"
+)[1]
 
-        if valid.sum() > 0:
+ 
+############################ 6. FORMAT W-L COLUMN ################################################  
 
-            corrected = multipletests(
-                dataset_results.loc[valid, "p_value"],
-                alpha=0.05,
-                method="holm"
-            )
-
-            dataset_results.loc[valid, "p_holm"] = corrected[1]
-            dataset_results.loc[valid, "significant"] = corrected[0]
-
-
-# ============================================================
-# Save dataset-level results
-# ============================================================
-
-dataset_results.to_csv(
-    "wilcoxon_dataset_level_results.csv",
-    index=False
+results_df["W–L"] = (
+    results_df["wins"].astype(int).astype(str)
+    + "–" +
+    results_df["losses"].astype(int).astype(str)
 )
 
+ 
+############################  7. REORDER COLUMNS  #####################################################  
 
-# ============================================================
-# Print dataset-level results
-# ============================================================
+results_df = results_df[
+    [
+        "Comparator",
+        "n",
+        "W–L",
+        "W",
+        "p",
+        "p_Holm",
+        "Med. ΔC",
+        "r_rb"
+    ]
+]
+ 
+#############################  8. ROUND NUMBERS ############################################################# 
 
-print("\n" + "=" * 100)
-print("DATASET-LEVEL WILCOXON SIGNED-RANK TEST")
-print("=" * 100)
+results_df["W"] = results_df["W"].round(0).astype(int)
 
-for partition in PARTITIONS:
-
-    print(f"\n\nPARTITION: {partition.upper()}")
-
-    for proposed_model in PROPOSED_MODELS:
-
-        print(f"\n--- {proposed_model} ---")
-
-        temp = dataset_results[
-            (dataset_results["partition"] == partition) &
-            (dataset_results["proposed_model"] == proposed_model)
-        ].copy()
-
-        print(
-            temp[
-                [
-                    "baseline_model",
-                    "n",
-                    "proposed_mean",
-                    "baseline_mean",
-                    "mean_difference",
-                    "statistic",
-                    "p_value",
-                    "p_holm",
-                    "significant"
-                ]
-            ].to_string(index=False)
-        )
-
-
-# ============================================================
-# 2. FOLD-LEVEL WILCOXON
-# ============================================================
-
-fold_results = []
-
-
-for partition in PARTITIONS:
-
-    partition_df = df[
-        df["partition"] == partition
-    ].copy()
-
-    for proposed_model in PROPOSED_MODELS:
-
-        for baseline_model in BASELINE_MODELS:
-
-            # ------------------------------------------------
-            # IMPORTANT:
-            #
-            # Pair observations using dataset + fold_id.
-            #
-            # This ensures that FedPDNN fold 0 of TCGA is
-            # compared with the corresponding baseline fold 0
-            # of TCGA.
-            # ------------------------------------------------
-
-            paired = partition_df[
-                [
-                    "dataset",
-                    "fold_id",
-                    proposed_model,
-                    baseline_model
-                ]
-            ].dropna()
-
-            x = paired[proposed_model]
-            y = paired[baseline_model]
-
-            statistic, p_value, n = run_wilcoxon(x, y)
-
-            if n > 0:
-                mean_proposed = x.mean()
-                mean_baseline = y.mean()
-            else:
-                mean_proposed = np.nan
-                mean_baseline = np.nan
-
-            fold_results.append({
-                "partition": partition,
-                "level": "fold",
-                "proposed_model": proposed_model,
-                "baseline_model": baseline_model,
-                "n": n,
-                "proposed_mean": mean_proposed,
-                "baseline_mean": mean_baseline,
-                "mean_difference": (
-                    mean_proposed - mean_baseline
-                    if n > 0 else np.nan
-                ),
-                "statistic": statistic,
-                "p_value": p_value
-            })
-
-
-fold_results = pd.DataFrame(fold_results)
-
-
-# ============================================================
-# Holm-Bonferroni correction for fold-level tests
-# ============================================================
-
-fold_results["p_holm"] = np.nan
-fold_results["significant"] = False
-
-
-for partition in PARTITIONS:
-
-    for proposed_model in PROPOSED_MODELS:
-
-        mask = (
-            (fold_results["partition"] == partition) &
-            (fold_results["proposed_model"] == proposed_model)
-        )
-
-        valid = (
-            mask &
-            fold_results["p_value"].notna()
-        )
-
-        if valid.sum() > 0:
-
-            corrected = multipletests(
-                fold_results.loc[valid, "p_value"],
-                alpha=0.05,
-                method="holm"
-            )
-
-            fold_results.loc[valid, "p_holm"] = corrected[1]
-            fold_results.loc[valid, "significant"] = corrected[0]
-
-
-# ============================================================
-# Save fold-level results
-# ============================================================
-
-fold_results.to_csv(
-    "wilcoxon_fold_level_results.csv",
-    index=False
+results_df["p"] = results_df["p"].map(
+    lambda x: f"{x:.5f}"
 )
 
+results_df["p_Holm"] = results_df["p_Holm"].map(
+    lambda x: f"{x:.5f}"
+)
 
-# ============================================================
-# Print fold-level results
-# ============================================================
+results_df["Med. ΔC"] = results_df["Med. ΔC"].map(
+    lambda x: f"{x:+.4f}"
+)
 
-print("\n" + "=" * 100)
-print("FOLD-LEVEL WILCOXON SIGNED-RANK TEST")
-print("=" * 100)
+results_df["r_rb"] = results_df["r_rb"].map(
+    lambda x: f"{x:+.3f}"
+)
 
-for partition in PARTITIONS:
+ 
+####################################### 9. BOLD Holm-CORRECTED SIGNIFICANT RESULTS ################################  
 
-    print(f"\n\nPARTITION: {partition.upper()}")
+# Need numeric p_Holm again for checking significance
+holm_numeric = multipletests(
+    results_df["p"].astype(float),
+    method="holm"
+)[1]
 
-    for proposed_model in PROPOSED_MODELS:
+results_df["p_Holm_numeric"] = holm_numeric
 
-        print(f"\n--- {proposed_model} ---")
+results_df["p_Holm"] = [
+    f"\\textbf{{{p:.5f}}}" if p < 0.05 else f"{p:.5f}"
+    for p in holm_numeric
+]
 
-        temp = fold_results[
-            (fold_results["partition"] == partition) &
-            (fold_results["proposed_model"] == proposed_model)
-        ].copy()
+results_df.drop(columns=["p_Holm_numeric"], inplace=True)
 
-        print(
-            temp[
-                [
-                    "baseline_model",
-                    "n",
-                    "proposed_mean",
-                    "baseline_mean",
-                    "mean_difference",
-                    "statistic",
-                    "p_value",
-                    "p_holm",
-                    "significant"
-                ]
-            ].to_string(index=False)
-        )
+ 
+####################################### 10. PRINT RESULT ######################################################### 
+
+print(results_df.to_string(index=False))
+results_df.to_csv("result.csv")
