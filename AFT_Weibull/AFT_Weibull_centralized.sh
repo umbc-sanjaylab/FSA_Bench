@@ -3,9 +3,9 @@ set -euo pipefail
 
 export CUDA_VISIBLE_DEVICES=1
  
-DATADIR="/home/il66977@ad.umbc.edu/Benchmarking_FSA/datasets/processed_data/small_data"
-LOGROOT="/home/il66977@ad.umbc.edu/Benchmarking_FSA/AFT_Weibull/logs/small_data/centralized"
-MODELDIR_ROOT="/home/il66977@ad.umbc.edu/Benchmarking_FSA/AFT_Weibull/models/small_data/centralized"
+DATADIR="/home/il66977@ad.umbc.edu/Benchmarking_FSA/datasets/processed_data/federated_data"
+LOGROOT="/home/il66977@ad.umbc.edu/Benchmarking_FSA/AFT_Weibull/logs/federated_data/centralized"
+MODELDIR_ROOT="/home/il66977@ad.umbc.edu/Benchmarking_FSA/AFT_Weibull/models/federated_data/centralized"
 
 mkdir -p "$LOGROOT" "$MODELDIR_ROOT" 
 
@@ -17,7 +17,7 @@ total_batch_size=(32 32 4 4 4 8 16 8 64 32) # Federated learning batch sizes
  
 # command to run only 3 datasets per job based on an argument
 GROUP_ID="${1:-1}" # default group = 1
-GROUP_SIZE=30
+GROUP_SIZE=10
 
 START_INDEX=$(((GROUP_ID - 1) * GROUP_SIZE))
 END_INDEX=$((START_INDEX + GROUP_SIZE - 1))
