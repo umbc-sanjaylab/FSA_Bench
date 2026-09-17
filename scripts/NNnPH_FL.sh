@@ -1,14 +1,13 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -euo pipefail 
+export CUDA_VISIBLE_DEVICES=1  
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
-export CUDA_VISIBLE_DEVICES=1
+DATADIR="${REPO_ROOT}/datasets/processed_data/federated_data"
+LOGROOT="${REPO_ROOT}/NNnPH/logs/federated_data/federated"
+MODELDIR_ROOT="${REPO_ROOT}/NNnPH/models/federated_data/federated"
 
-DATADIR="/home/il66977@ad.umbc.edu/Benchmarking_FSA/datasets/processed_data/federated_data"
-LOGROOT="/home/il66977@ad.umbc.edu/Benchmarking_FSA/NNnPH/logs/federated_data/federated"
-MODELDIR_ROOT="/home/il66977@ad.umbc.edu/Benchmarking_FSA/NNnPH/models/federated_data/federated"
-
-mkdir -p "$LOGROOT" "$MODELDIR_ROOT" 
-# federated dataset
+mkdir -p "$LOGROOT" "$MODELDIR_ROOT"  
 models=("NNnPH") 
 
 ################################################### distributed dataset #########################################################

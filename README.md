@@ -43,6 +43,17 @@ conda activate FSA_Bench
 pip install -r requirements.txt
 ```
 
+## ▶️ How to Run
+
+FSA-Bench experiments are launched using the shell scripts provided
+in the `scripts/` directory. Each script defines the dataset, model, training configuration, cross-validation settings, output directories, and other experiment parameters.
+
+From the repository root, run a script using:
+
+```bash
+bash scripts/<script_name>.sh 
+```
+
 ## 📊 Dataset
 
 FSA-Bench comprehensively evaluates federated survival models on **10 real-world federated survival datasets** covering diverse clinical domains, patient populations, and federated client configurations. We preserve naturally occurring institutional or geographically defined partitions to reflect model evaluation under heterogeneous data distributions across clients at realistic federated healthcare environments.

@@ -1,24 +1,19 @@
 #!/usr/bin/env bash  
 export CUDA_VISIBLE_DEVICES=1 
-set -euo pipefail
+set -euo pipefail  
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
-DATADIR="/home/il66977@ad.umbc.edu/Benchmarking_FSA/datasets/processed_data/federated_data/"
-LOGROOT="/home/il66977@ad.umbc.edu/Benchmarking_FSA/FedPseudo_Flare/logs/federated_data/federated"
-MODELDIR_ROOT="/home/il66977@ad.umbc.edu/Benchmarking_FSA/FedPseudo_Flare/models/federated_data/federated"
+DATADIR="${REPO_ROOT}/datasets/processed_data/federated_data"
+LOGROOT="${REPO_ROOT}/FedPseudo_Flare/logs/federated_data/federated"
+MODELDIR_ROOT="${REPO_ROOT}/FedPseudo_Flare/models/federated_data/federated"
 
 mkdir -p "$LOGROOT" "$MODELDIR_ROOT" 
   
-################################################### distributed dataset #########################################################
-
+################################################### distributed dataset ######################################################### 
 federated_datasets=("TCGA" "Aids2" "LeukSurv" "Pbc3" "d.oropha.rec" "cgd" "uis" "scania" "seer" "Dialysis")
 total_fold=(5 5 3 3 3 3 5 5 5 3)                   # Number of folds
 total_center=(7 4 24 6 6 4 2 5 3 67)               # Number of clients
-total_batch_size=(128 64 32 32 32 32 64 32 128 32) # Federated learning batch sizes 
-
-federated_datasets=("LeukSurv" "d.oropha.rec" "cgd" "uis" "scania" "Aids2" "Dialysis")
-total_fold=(3 3 3 5 5 5 3)                   # Number of folds
-total_center=(24 6 4 2 5 4 67)               # Number of clients
-total_batch_size=(32 32 32 64 32 64 32)      # Federated learning batch sizes 
+total_batch_size=(128 64 32 32 32 32 64 32 128 32) # Federated learning batch sizes  
 
 # survival methods
 models=("FedPDNN" "FedPLSTM" "FedPAttn")     

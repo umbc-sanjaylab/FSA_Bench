@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -euo pipefail 
+export CUDA_VISIBLE_DEVICES=0 
 
-export CUDA_VISIBLE_DEVICES=0
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
-DATADIR="/home/il66977@ad.umbc.edu/Benchmarking_FSA/datasets/processed_data/small_data/"
-LOGROOT="/home/il66977@ad.umbc.edu/Benchmarking_FSA/Fed_CoxPH/logs/small_data/centralized" 
-MODELDIR_ROOT="/home/il66977@ad.umbc.edu/Benchmarking_FSA/Fed_CoxPH/models/small_data/centralized"
+DATADIR="${REPO_ROOT}/datasets/processed_data/federated_data"
+LOGROOT="${REPO_ROOT}/Fed_CoxPH/logs/federated_data/centralized"
+MODELDIR_ROOT="${REPO_ROOT}/Fed_CoxPH/models/federated_data/centralized"
 
 mkdir -p "$LOGROOT" "$MODELDIR_ROOT" 
 high_censored_datasets=("FRTCS" "prostateSurvival" "vlbw" "flchain" "heartvalve" "divorce" "Dialysis" "Rossi" "csl" "nwtco" "actg" "dataDIVAT3" "dataDIVAT2" "dataDIVAT1" "hdfail") 

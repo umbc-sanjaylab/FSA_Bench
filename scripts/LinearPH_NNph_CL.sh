@@ -1,24 +1,11 @@
 #!/usr/bin/env bash  
-export CUDA_VISIBLE_DEVICES=0
+export CUDA_VISIBLE_DEVICES=0 
+set -euo pipefail  
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
-# Limit CPU usage
-CPU_CORES="${CPU_CORES:-0-3}"     # use only logical CPU cores 0,1,2,3
-CPU_THREADS="${CPU_THREADS:-4}"  # number of CPU threads allowed
-
-export OMP_NUM_THREADS="$CPU_THREADS"
-export MKL_NUM_THREADS="$CPU_THREADS"
-export OPENBLAS_NUM_THREADS="$CPU_THREADS"
-export NUMEXPR_NUM_THREADS="$CPU_THREADS"
-export BLIS_NUM_THREADS="$CPU_THREADS"
-export VECLIB_MAXIMUM_THREADS="$CPU_THREADS"
-
-# PyTorch-specific thread control
-export TORCH_NUM_THREADS="$CPU_THREADS"
-set -euo pipefail
-
-DATADIR="/home/il66977@ad.umbc.edu/Benchmarking_FSA/datasets/processed_data/federated_data/"
-LOGROOT="/home/il66977@ad.umbc.edu/Benchmarking_FSA/LinearPH_NNph/logs/federated_data/centralized"
-MODELDIR_ROOT="/home/il66977@ad.umbc.edu/Benchmarking_FSA/LinearPH_NNph/models/federated_data/centralized"
+DATADIR="${REPO_ROOT}/datasets/processed_data/federated_data"
+LOGROOT="${REPO_ROOT}/LinearPH_NNph/logs/federated_data/centralized"
+MODELDIR_ROOT="${REPO_ROOT}/LinearPH_NNph/models/federated_data/centralized"
 
 mkdir -p "$LOGROOT" "$MODELDIR_ROOT"
 high_censored_datasets=("dataDIVAT1" "dataDIVAT2" "dataDIVAT3" "divorce" "hdfail" "flchain" "prostateSurvival" "FRTCS" "vlbw" "nwtco" "actg")   

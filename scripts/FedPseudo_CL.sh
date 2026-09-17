@@ -1,57 +1,19 @@
 #!/usr/bin/env bash  
-export CUDA_VISIBLE_DEVICES=1
+export CUDA_VISIBLE_DEVICES=1 
+set -euo pipefail   
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
-# Limit CPU usage
-CPU_CORES="${CPU_CORES:-0-3}"     # use only logical CPU cores 0,1,2,3
-CPU_THREADS="${CPU_THREADS:-1}"  # number of CPU threads allowed
-
-export OMP_NUM_THREADS="$CPU_THREADS"
-export MKL_NUM_THREADS="$CPU_THREADS"
-export OPENBLAS_NUM_THREADS="$CPU_THREADS"
-export NUMEXPR_NUM_THREADS="$CPU_THREADS"
-export BLIS_NUM_THREADS="$CPU_THREADS"
-export VECLIB_MAXIMUM_THREADS="$CPU_THREADS"
-
-# PyTorch-specific thread control
-export TORCH_NUM_THREADS="$CPU_THREADS"
-set -euo pipefail
-
-
-DATADIR="/home/il66977@ad.umbc.edu/Benchmarking_FSA/datasets/processed_data/federated_data"
-LOGROOT="/home/il66977@ad.umbc.edu/Benchmarking_FSA/FedPseudo_Flare/logs/federated_data/centralized"
-MODELDIR_ROOT="/home/il66977@ad.umbc.edu/Benchmarking_FSA/FedPseudo_Flare/models/federated_data/centralized"
+DATADIR="${REPO_ROOT}/datasets/processed_data/federated_data"
+LOGROOT="${REPO_ROOT}/FedPseudo_Flare/logs/federated_data/centralized"
+MODELDIR_ROOT="${REPO_ROOT}/FedPseudo_Flare/models/federated_data/centralized"
 
 mkdir -p "$LOGROOT" "$MODELDIR_ROOT"
-models=("FedPDNN" "FedPLSTM" "FedPAttn") 
-
-############################################################ omics datasets #####################################################
-omics_datasets=("ovarian1data" "Ovarian2_data" "GE1_data" "GE2_data" "GE3_data" "GE4_data" "GE5_data" "GE6_data" "Melanoma_itraq_data" "Melanoma_nano_data" "gse4335" "AML_Bull" "dataOvarian1" "gse3143" "gse1992" "MCLcleaned" "metabric-hd" "vdv" "chop" "phpl04K8a" "Bergamaschi")
-total_fold=(1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1)
-total_batch_size=(16 8 8 16 8 16 8 32 8 8 8 16 64 16 8 16 64 8 32 32 8)   
-
-############################################################ large datasets #####################################################
-large_datasets=("UnempDur" "grace" "Framingham" "support2" "acath" "TRACE" "metabrick" "rdata" "rott2")
-total_fold=(5 5 5 5 5 5 5 5 5)
-total_batch_size=(64 64 64 64 64 64 64 64 64)   
- 
-
-############################################################ small datasets #####################################################
-small_datasets=("veteran" "follic" "pbc" "Lung_data" "hepatoCellular" "wpbc" "ova" "Unemployment" "Melanoma" "micro.censure" "e1684" "zinc" "stagec"  "nki70" "mgus" "whas500" "pharmacoSmoking" "burn" "cost" "GBSG2" "FRTCS" "vlbw" "glioma" "breast" "ovarian" "Melanoma_clinical_data")
-total_fold=(3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3  3 3 3 3 3 3)
-total_batch_size=(64 64 64 64 64 64 64 64 64 64 64  64 64 64 64 64 64 64 64 64 64 64 64 64 64 64)
-total_center=(3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3  3 3 3 3 3 3 3 2 2 2 2)
-
-
-####################################################### high censored datasets ###################################################
-high_censored_datasets=("dataDIVAT1" "dataDIVAT2" "dataDIVAT3" "divorce" "hdfail" "flchain" "prostateSurvival" "nwtco" "actg")  
-total_fold=(5 5 3 5 5 5 3 3 3)
-total_batch_size=(64 64 64 64 256 64 128 64 64)  
-total_center=(5 5 5 5 5 5 5 5 5)   
+models=("FedPDNN" "FedPLSTM" "FedPAttn")  
 
 ####################################################### federated datasets ###################################################
 federated_datasets=("TCGA" "Aids2" "LeukSurv" "Pbc3" "d.oropha.rec" "cgd" "uis" "scania" "seer" "Dialysis")
 total_fold=(5 5 3 3 3 3 5 5 5 3)                   # Number of folds
-total_center=(1 1 1 1 1 1 1 1 1 1)               # Number of clients
+total_center=(1 1 1 1 1 1 1 1 1 1)                 # Number of clients
 total_batch_size=(128 64 32 32 32 32 64 32 128 32) # Federated learning batch sizes 
 
 # Optional: set DRY_RUN=1 to only print commands
