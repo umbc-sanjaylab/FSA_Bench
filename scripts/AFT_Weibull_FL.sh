@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
 export CUDA_VISIBLE_DEVICES=1
-set -euo pipefail
+set -euo pipefail 
 
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
-DATADIR="/home/il66977@ad.umbc.edu/Benchmarking_FSA/datasets/processed_data/federated_data"
-LOGROOT="/home/il66977@ad.umbc.edu/Benchmarking_FSA/AFT_Weibull/logs/federated_data/federated"
-MODELDIR_ROOT="/home/il66977@ad.umbc.edu/Benchmarking_FSA/AFT_Weibull/models/federated_data/federated"
+DATADIR="${REPO_ROOT}/datasets/processed_data/federated_data"
+LOGROOT="${REPO_ROOT}/AFT_Weibull/logs/federated_data/federated"
+MODELDIR_ROOT="${REPO_ROOT}/AFT_Weibull/models/federated_data/federated"
 
 mkdir -p "$LOGROOT" "$MODELDIR_ROOT"  
 

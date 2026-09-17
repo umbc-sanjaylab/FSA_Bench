@@ -1,18 +1,19 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -euo pipefail 
+export CUDA_VISIBLE_DEVICES=1 
 
-export CUDA_VISIBLE_DEVICES=1
- 
-DATADIR="/home/il66977@ad.umbc.edu/Benchmarking_FSA/datasets/processed_data/federated_data"
-LOGROOT="/home/il66977@ad.umbc.edu/Benchmarking_FSA/AFT_Weibull/logs/federated_data/centralized"
-MODELDIR_ROOT="/home/il66977@ad.umbc.edu/Benchmarking_FSA/AFT_Weibull/models/federated_data/centralized"
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+DATADIR="${REPO_ROOT}/datasets/processed_data/federated_data"
+LOGROOT="${REPO_ROOT}/AFT_Weibull/logs/federated_data/centralized"
+MODELDIR_ROOT="${REPO_ROOT}/AFT_Weibull/models/federated_data/centralized"
 
 mkdir -p "$LOGROOT" "$MODELDIR_ROOT" 
 
 ##################################################### Distributed datasets ##################################################### 
 federated_datasets=("TCGA" "Aids2" "LeukSurv" "Pbc3" "d.oropha.rec" "cgd" "uis" "scania" "seer" "Dialysis")
 total_fold=(5 5 3 3 3 3 5 5 5 3)            # Number of folds
-total_center=(1 1 1 1 1 1 1 1 1 1)        # Number of clients
+total_center=(1 1 1 1 1 1 1 1 1 1)          # Number of clients
 total_batch_size=(32 32 4 4 4 8 16 8 64 32) # Federated learning batch sizes  
  
 # command to run only 3 datasets per job based on an argument
