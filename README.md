@@ -19,7 +19,7 @@ In this repository, we present **FSA-Bench**, a comprehensive benchmark for eval
 - Evaluation under varying **censoring rates** and **numbers of participating clients**.
 - Evaluation using **C-index, Integrated Brier Score (IBS), and Negative Log-Likelihood (NLL)**.
 - Statistical significance analysis of model performance.
-- Evaluation of **explanation stability** using SurvSHAP, Spearman correlation, Kendall's tau, and Jaccard similarity across fold, institutions, and partitions level. 
+- Evaluation of **explanation stability** using SurvSHAP, Spearman correlation, Kendall's tau, and Jaccard similarity across fold, institutions, and partitions level.
 
 ## 🏗️ Architecture Pipeline of FSA-Bench Framework
 
@@ -45,12 +45,12 @@ pip install -r requirements.txt
 
 ## 📊 Dataset
 
-FSA-Bench comprehensively evaluates federated survival models on **10 real-world federated survival datasets** covering diverse clinical domains, patient populations, and federated client configurations. We preserve naturally occurring institutional or geographically defined partitions to reflect model evaluation under heterogeneous data distributions across clients at realistic federated healthcare environments.   
+FSA-Bench comprehensively evaluates federated survival models on **10 real-world federated survival datasets** covering diverse clinical domains, patient populations, and federated client configurations. We preserve naturally occurring institutional or geographically defined partitions to reflect model evaluation under heterogeneous data distributions across clients at realistic federated healthcare environments.
 
 ### Dataset Summary
 
 | Dataset | Samples | Variables | Event (%) | Censoring (%) | # Clients | Data Link |
-|---|---:|---:|---:|---:|---:|---|
+| --- | ---: | ---: | ---: | ---: | ---: | --- |
 | **TCGA** | 6,084 | 283 | 30.50 | 69.50 | 7 | [Link](https://www.cancer.gov/ccg/research/genome-sequencing/tcga) |
 | **Aids2** | 2,839 | 3 | 62.03 | 37.97 | 4 | [Link](https://rdrr.io/cran/MASS/man/Aids2.html) |
 | **LeukSurv** | 1,043 | 4 | 84.28 | 15.72 | 24 | [Link](https://rdrr.io/cran/spBayesSurv/man/LeukSurv.html) |
@@ -81,8 +81,9 @@ FSA-Bench evaluates the following survival models:
 - **FedPAttn**
 
 ## ⚙️ Experimental Setup
-We use the following experimental setup during modeling of distributed survival data using federated survival models. 
- 
+
+We use the following experimental setup during modeling of distributed survival data using federated survival models.
+
 - **5-fold cross-validation**
 - **Centralized Learning (CL)** and **Federated Learning (FL)**
 - Up to **50 federated communication rounds** and **250 local epochs**
@@ -92,7 +93,8 @@ We use the following experimental setup during modeling of distributed survival 
 ## 📈 Evaluation
 
 ### Predictive Performance
-We utilize the following metrics to evaluate the predictive performances of federated survival models. 
+
+We utilize the following metrics to evaluate the predictive performances of federated survival models.
 
 - **Time-dependent C-index** — eavaluates model's ability to correctly rank patients according to their risks. The higher the value, the better the model is.
 - **Integrated Brier Score (IBS)** — measures survival probability prediction accuracy. Lower is better.
@@ -100,7 +102,7 @@ We utilize the following metrics to evaluate the predictive performances of fede
 
 ### Statistical Analysis
 
-We perform pairwise Wilcoxon signed-rank statistical test on FedPAttn model with other federated survival baselines. Holm correction is applied across the comparisons. 
+We perform pairwise Wilcoxon signed-rank statistical test on FedPAttn model with other federated survival baselines. Holm correction is applied across the comparisons.
 
 ### Explanation Stability
 

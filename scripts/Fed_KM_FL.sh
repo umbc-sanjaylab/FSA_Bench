@@ -6,19 +6,7 @@ DATADIR="/home/il66977@ad.umbc.edu/Benchmarking_FSA/datasets/processed_data/fede
 LOGROOT="/home/il66977@ad.umbc.edu/Benchmarking_FSA/Federated_Kaplam_Meier/logs/federated_data/federated"
 MODELDIR_ROOT="/home/il66977@ad.umbc.edu/Benchmarking_FSA/Federated_Kaplam_Meier/models/federated_data/federated"
 
-mkdir -p "$LOGROOT" "$MODELDIR_ROOT"
-
-# Distributed datasets
-# federated_datasets=("TCGA" "Aids2" "LeukSurv" "Pbc3" "Dialysis" "d.oropha.rec" "cgd" "uis" "cancer" "scania" "SEER") 
-# total_fold=(5 5 3 3 3 3 3 5 1 5 5) 
-# total_batch_size=(32 32 4 4 16 4 1 16 2 8 64) 
-# total_center=(7 4 24 6 67 6 13 2 19 5 3) 
-
-# Distributed datasets
-# federated_datasets=("TCGA" "Dialysis" "Aids2" "LeukSurv" "Pbc3" "d.oropha.rec" "cgd" "uis" "scania" "seer") 
-# total_fold=(5 3 5 3 3 3 3 5 5 5) 
-# total_batch_size=(32 32 32 4 4 4 8 16 8 64) 
-# total_center=(7 67 4 24 6 6 4 2 5 3) 
+mkdir -p "$LOGROOT" "$MODELDIR_ROOT" 
 
 ################################################### distributed dataset #########################################################
 federated_datasets=("TCGA" "Aids2" "LeukSurv" "Pbc3" "d.oropha.rec" "cgd" "uis" "scania" "seer" "Dialysis")

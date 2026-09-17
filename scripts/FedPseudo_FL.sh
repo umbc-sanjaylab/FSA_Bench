@@ -1,19 +1,5 @@
 #!/usr/bin/env bash  
-export CUDA_VISIBLE_DEVICES=1
-
-# # Limit CPU usage
-# CPU_CORES="${CPU_CORES:-0-3}"     # use only logical CPU cores 0,1,2,3
-# CPU_THREADS="${CPU_THREADS:-1}"  # number of CPU threads allowed
-
-# export OMP_NUM_THREADS="$CPU_THREADS"
-# export MKL_NUM_THREADS="$CPU_THREADS"
-# export OPENBLAS_NUM_THREADS="$CPU_THREADS"
-# export NUMEXPR_NUM_THREADS="$CPU_THREADS"
-# export BLIS_NUM_THREADS="$CPU_THREADS"
-# export VECLIB_MAXIMUM_THREADS="$CPU_THREADS"
-
-# # PyTorch-specific thread control
-# export TORCH_NUM_THREADS="$CPU_THREADS"
+export CUDA_VISIBLE_DEVICES=1 
 set -euo pipefail
 
 DATADIR="/home/il66977@ad.umbc.edu/Benchmarking_FSA/datasets/processed_data/federated_data/"
