@@ -4,14 +4,21 @@
 [![PyTorch](https://img.shields.io/badge/PyTorch-2.0+-red.svg)](https://pytorch.org/)
 [![NVIDIA FLARE](https://img.shields.io/badge/NVIDIA%20FLARE-2.7+-orange.svg)](https://nvflare.readthedocs.io/)
 [![License: UMBC-Prof-Sanjay-Lab](https://img.shields.io/badge/License-UMBC_Prof_Sanjay_Lab-yellow.svg)](LICENSE)
+ 
 
-## 🎯 Overview
+## Overview
 
-Survival analysis aims to predict the probability of our expected event over the time. Traditionally, survival data in healthcare are often distributed across multiple institutions and we cannot pull them due to privacy and data-sharing constraints such as HIPPA/GDPR. Federated Learning (FL) enables institutions to collaboratively train survival models without sharing sensitive patient-level data.
+Paper • Installation • Required Packages • Running Experiments • Datasets •
+Evaluation Metrics • Experimental Settings • How to Cite
 
-In this repository, we present **FSA-Bench**, a comprehensive benchmark for evaluating federated survival models under heterogeneous and distributed healthcare settings.  
+## Paper
 
-## 🚀 Installation
+For more details, see our paper **FSA-Bench: Benchmarking Federated Survival Models**, accepted at the **Machine Learning for Healthcare (MLHC) 2026** conference.
+
+> Paper link will be added upon publication.
+
+
+## Installation
 
 ### From Source
 
@@ -29,18 +36,33 @@ conda activate FSA_Bench
 pip install -r requirements.txt
 ```
 
-## ▶️ How to Run
+##  Running Experiments
 
-FSA-Bench experiments are launched using the shell scripts provided
-in the `scripts/` directory. Each script defines the dataset, model, training configuration, cross-validation settings, output directories, and other experiment parameters.
+FSA-Bench experiments are executed using the shell scripts provided in the `scripts/` directory. The scripts specify the model, dataset, learning configuration, cross-validation settings, and output directories.
 
-From the repository root, run a script using:
+From the repository root, we can execute any script as:
 
 ```bash
 bash scripts/<script_name>.sh 
 ```
 
-## 📊 Dataset
+### Centralized Learning
+
+Centralized learning experiments can be executed using this command. For example:
+
+```bash
+bash scripts/DeepPseudo_CL.sh
+```
+
+### Federated Learning
+
+Federated learning experiments can be executed using this command. For example:
+
+```bash
+bash scripts/DeepPseudo_FL.sh
+```
+
+## Dataset
 
 FSA-Bench comprehensively evaluates federated survival models on **10 real-world federated survival datasets** covering diverse clinical domains, patient populations, and federated client configurations. We preserve naturally occurring institutional or geographically defined partitions to reflect model evaluation under heterogeneous data distributions across clients at realistic federated healthcare environments.
 
@@ -61,7 +83,7 @@ FSA-Bench comprehensively evaluates federated survival models on **10 real-world
 
 The datasets span a wide range of federated settings, from **2 clients (UIS)** to **67 clients (Dialysis)**, and include both small cohorts such as **cgd (128 samples)** and large-scale datasets such as **SEER (25,749 samples)**.
 
-## 🤖 Survival Models
+## Survival Models
 
 FSA-Bench evaluates the following survival models:
 
@@ -77,7 +99,7 @@ FSA-Bench evaluates the following survival models:
 - **FedPLSTM**
 - **FedPAttn**
 
-## ⚙️ Experimental Setup
+## Experimental Setup
 
 We use the following experimental setup during modeling of distributed survival data using federated survival models.
 
@@ -87,16 +109,8 @@ We use the following experimental setup during modeling of distributed survival 
 - **Early stopping** based on validation performance at both client level and server level  
 - Consistent preprocessing and evaluation across datasets and models
 
-## 📈 Evaluation
-
-### Predictive Performance
-
-We utilize the following metrics to evaluate the predictive performances of federated survival models.
-
-- **Time-dependent C-index** — eavaluates model's ability to correctly rank patients according to their risks. The higher the value, the better the model is.
-- **Integrated Brier Score (IBS)** — measures survival probability prediction accuracy. Lower is better.
-- **Negative Log-Likelihood (NLL)** — measures the agreement between the predicted survival distribution and ovserved event times. Lower value indicates better performance.
-
+## Evaluation
+ 
 ### Statistical Analysis
 
 We perform pairwise Wilcoxon signed-rank statistical test on FedPAttn model with other federated survival baselines. Holm correction is applied across the comparisons.
@@ -111,7 +125,7 @@ Stability is measured using the following metrices:
 - **Kendall's tau**
 - **Jaccard similarity**
 
-## 📋 Requirements
+## Requirements
 
 ```text
 jupyter==1.0.0
@@ -122,7 +136,21 @@ pandas==1.3.5
 numpy==1.24.3
 ```
 
-## 📄 License
+## How to Cite
+
+If you use FSA-Bench, its code, or datasets in your research, please cite our paper:
+
+```bibtex
+@inproceedings{ahmed2026fsabench,
+  title     = {FSA-Bench: Benchmarking Federated Survival Models},
+  author    = {Ahmed, Sultan and Purushotham, Sanjay},
+  year      = {2026}
+}
+```
+
+
+
+## License
 
 This project is licensed under the UMBC Professor Sanjay Lab license.
 
