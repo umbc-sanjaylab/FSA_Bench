@@ -9,21 +9,7 @@
 
 Survival analysis aims to predict the probability of our expected event over the time. Traditionally, survival data in healthcare are often distributed across multiple institutions and we cannot pull them due to privacy and data-sharing constraints such as HIPPA/GDPR. Federated Learning (FL) enables institutions to collaboratively train survival models without sharing sensitive patient-level data.
 
-In this repository, we present **FSA-Bench**, a comprehensive benchmark for evaluating federated survival models under heterogeneous and distributed healthcare settings.
-
-### 📌 Our Contribution
-
-- Comprehensive benchmarking of **federated survival models** across **10 real-world federated survival datasets**.
-- Evaluation of **statistical, machine learning, deep learning and state-of-the-art Attention based federated survival models**.
-- Comparison of **Centralized Learning (CL)** and **Federated Learning (FL)** partitions.
-- Evaluation under varying **censoring rates** and **numbers of participating clients**.
-- Evaluation using **C-index, Integrated Brier Score (IBS), and Negative Log-Likelihood (NLL)**.
-- Statistical significance analysis of model performance.
-- Evaluation of **explanation stability** using SurvSHAP, Spearman correlation, Kendall's tau, and Jaccard similarity across fold, institutions, and partitions level.
-
-## 🏗️ Architecture Pipeline of FSA-Bench Framework
-
-![FSA-Bench Framework](asset/FSA_Bench_Framework.png)
+In this repository, we present **FSA-Bench**, a comprehensive benchmark for evaluating federated survival models under heterogeneous and distributed healthcare settings.  
 
 ## 🚀 Installation
 
