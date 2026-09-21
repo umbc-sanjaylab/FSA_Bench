@@ -8,15 +8,13 @@
 
 ## Overview
 
-Paper • Installation • Required Packages • Running Experiments • Datasets •
-Evaluation Metrics • Experimental Settings • How to Cite
+Paper • Installation • Required Packages • Running Experiments • Datasets • Evaluation Metrics • Experimental Settings • How to Cite
 
 ## Paper
 
 For more details, see our paper **FSA-Bench: Benchmarking Federated Survival Models**, accepted at the **Machine Learning for Healthcare (MLHC) 2026** conference.
 
-> Paper link will be added upon publication.
-
+> Paper link will be added upon publication. 
 
 ## Installation
 
@@ -38,7 +36,7 @@ pip install -r requirements.txt
 
 ##  Running Experiments
 
-FSA-Bench experiments are executed using the shell scripts provided in the `scripts/` directory. The scripts specify the model, dataset, learning configuration, cross-validation settings, and output directories.
+The shell scripts in FSA-Bench framework are in the `scripts/` directory to reproduce the centralized and federated experiments. Each script specifies the dataset, model, cross-validation folds, batch size, training configuration, and output directories. 
 
 From the repository root, we can execute any script as:
 
@@ -48,23 +46,57 @@ bash scripts/<script_name>.sh
 
 ### Centralized Learning
 
-Centralized learning experiments can be executed using this command. For example:
+The centralized experiments can be executed using the following scripts:
 
-```bash
-bash scripts/DeepPseudo_CL.sh
-```
+| Model | Command |
+| --- | --- |
+| AFT-Weibull | `bash scripts/AFT_Weibull_CL.sh` |
+| DeepHit | `bash scripts/DeepHit_CL.sh` |
+| DeepPseudo | `bash scripts/DeepPseudo_CL.sh` |
+| Fed. CoxPH | `bash scripts/Fed_CoxPH_CL.sh` |
+| Fed. Kaplan-Meier | `bash scripts/Fed_KM_CL.sh` |
+| FedPseudo | `bash scripts/FedPseudo_CL.sh` |
+| LinearPH | `bash scripts/LinearPH_NNph_CL.sh` |
+| NNPH | `bash scripts/NNnPH_CL.sh` |
 
 ### Federated Learning
 
-Federated learning experiments can be executed using this command. For example:
+The federated experiments can be executed using the following scripts:
 
-```bash
-bash scripts/DeepPseudo_FL.sh
-```
+| Model | Command |
+| --- | --- |
+| AFT-Weibull | `bash scripts/AFT_Weibull_FL.sh` |
+| DeepHit | `bash scripts/DeepHit_FL.sh` |
+| DeepPseudo | `bash scripts/DeepPseudo_FL.sh` |
+| Fed. CoxPH | `bash scripts/Fed_CoxPH_FL.sh` |
+| Fed. Kaplan-Meier | `bash scripts/Fed_KM_FL.sh` |
+| FedPseudo | `bash scripts/FedPseudo_FL.sh` |
+| LinearPH | `bash scripts/LinearPH_NNPH_FL.sh` |
+| NNPH | `bash scripts/NNnPH_FL.sh` |
+
+### Common Training Configuration
+
+The deep-learning-based survival models use the following common experimental settings unless otherwise specified in the corresponding shell script:
+
+| Parameter | Value |
+| --- | --- |
+| Optimizer | Adam |
+| Learning rate | `1e-3` |
+| Maximum epochs | `250` |
+| Weight regularization | `5e-5` |
+| Dropout | `0.05` |
+| Early-stopping patience | `25` |
+| Client participation | `1.0` |
+| Initialization seed | `5` |
+| FL aggregation | FedAvg |
+| FL communication rounds | `50` |
+
+Model-specific and dataset-specific parameters are defined in the corresponding scripts in the `scripts/` directory.
+
 
 ## Dataset
 
-FSA-Bench comprehensively evaluates federated survival models on **10 real-world federated survival datasets** covering diverse clinical domains, patient populations, and federated client configurations. We preserve naturally occurring institutional or geographically defined partitions to reflect model evaluation under heterogeneous data distributions across clients at realistic federated healthcare environments.
+The number of cross-validation folds, federated clients, and batch sizes vary across datasets.
 
 ### Dataset Summary
 
@@ -81,49 +113,36 @@ FSA-Bench comprehensively evaluates federated survival models on **10 real-world
 | **scania** | 1,040 | 4 | 52.60 | 47.40 | 5 | [Link](https://cran.r-project.org/web/packages/eha/refman/eha.html#scania) |
 | **SEER** | 25,749 | 11 | 25.36 | 74.64 | 3 | [Link](https://seer.cancer.gov/) |
 
-The datasets span a wide range of federated settings, from **2 clients (UIS)** to **67 clients (Dialysis)**, and include both small cohorts such as **cgd (128 samples)** and large-scale datasets such as **SEER (25,749 samples)**.
 
-## Survival Models
+> Dataset availability and configuration may vary across individual model scripts.
 
-FSA-Bench evaluates the following survival models:
+### Running Selected Dataset Groups
 
-- **Fed. Kaplan-Meier (Fed. KM)**
-- **Fed. AFT-Weibull**
-- **Fed. CoxPH**
-- **NNPH**
-- **NNnPH**
-- **LinearPH**
-- **DeepPseudo**
-- **DeepHit**
-- **FedPDNN**
-- **FedPLSTM**
-- **FedPAttn**
+The experiment scripts accept an optional group ID to select a predefined group of datasets. For example:
 
-## Experimental Setup
+```bash
+bash scripts/DeepHit_CL.sh 1
+bash scripts/DeepHit_FL.sh 1
+```
 
-We use the following experimental setup during modeling of distributed survival data using federated survival models.
+### Dry Run
 
-- **5-fold cross-validation**
-- **Centralized Learning (CL)** and **Federated Learning (FL)**
-- Up to **50 federated communication rounds** and **250 local epochs**
-- **Early stopping** based on validation performance at both client level and server level  
-- Consistent preprocessing and evaluation across datasets and models
+For scripts supporting dry-run mode, set `DRY_RUN=1` to inspect the generated experiment commands without starting training:
 
-## Evaluation
+```bash
+DRY_RUN=1 bash scripts/DeepHit_CL.sh
+DRY_RUN=1 bash scripts/DeepHit_FL.sh
+```
  
-### Statistical Analysis
+## Evaluation
+  
+### Explanation Stability 
 
-We perform pairwise Wilcoxon signed-rank statistical test on FedPAttn model with other federated survival baselines. Holm correction is applied across the comparisons.
+Federated learning experiments can be executed using this command. For example:
 
-### Explanation Stability
-
-We perform explanation-stability analysis on federated survival models using **SurvSHAP** across folds, federated sites, and centralized/federated partitions.
-
-Stability is measured using the following metrices:
-
-- **Spearman's rank correlation**
-- **Kendall's tau**
-- **Jaccard similarity**
+```bash
+bash scripts/DeepPseudo_FL.sh
+``` 
 
 ## Requirements
 

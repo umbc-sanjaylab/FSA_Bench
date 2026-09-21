@@ -9,7 +9,9 @@ scikit-survival/
 logs1/ 
 workdir/ 
 pickles/   
-README.md.bak
+*.bak
+.vscode/
+
 
 ################################################### Keep interpretability experiment logs ###################################################
 !interpretability/log/

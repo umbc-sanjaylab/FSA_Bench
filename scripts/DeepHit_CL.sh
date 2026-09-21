@@ -5,8 +5,8 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 DATADIR="${REPO_ROOT}/datasets/processed_data/federated_data"
-LOGROOT="${REPO_ROOT}/AFT_Weibull/logs/federated_data/centralized"
-MODELDIR_ROOT="${REPO_ROOT}/AFT_Weibull/models/federated_data/centralized"
+LOGROOT="${REPO_ROOT}/DeepHit/logs/federated_data/centralized"
+MODELDIR_ROOT="${REPO_ROOT}/DeepHit/models/federated_data/centralized"
 
 mkdir -p "$LOGROOT" "$MODELDIR_ROOT"     
 
