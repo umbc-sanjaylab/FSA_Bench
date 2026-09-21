@@ -134,15 +134,73 @@ DRY_RUN=1 bash scripts/DeepHit_CL.sh
 DRY_RUN=1 bash scripts/DeepHit_FL.sh
 ```
  
-## Evaluation
-  
-### Explanation Stability 
+## Interpretability
 
-Federated learning experiments can be executed using this command. For example:
+The interpretability scripts are available in the `interpretability/` directory.
+
+From the repository root:
 
 ```bash
-bash scripts/DeepPseudo_FL.sh
-``` 
+cd interpretability
+```
+
+### Fold-Level Interpretation
+
+```bash
+taskset -c 8-10 \
+env OMP_NUM_THREADS=1 \
+    MKL_NUM_THREADS=1 \
+    OPENBLAS_NUM_THREADS=1 \
+    NUMEXPR_NUM_THREADS=1 \
+    VECLIB_MAXIMUM_THREADS=1 \
+python fold_level.py -d 5
+```
+
+### Site-Level Interpretation
+
+```bash
+taskset -c 11-12 \
+env OMP_NUM_THREADS=1 \
+    MKL_NUM_THREADS=1 \
+    OPENBLAS_NUM_THREADS=1 \
+    NUMEXPR_NUM_THREADS=1 \
+    VECLIB_MAXIMUM_THREADS=1 \
+python site_level.py -d 1
+```
+
+### Partition-Level Interpretation
+
+```bash
+taskset -c 21-22 \
+env OMP_NUM_THREADS=1 \
+    MKL_NUM_THREADS=1 \
+    OPENBLAS_NUM_THREADS=1 \
+    NUMEXPR_NUM_THREADS=1 \
+    VECLIB_MAXIMUM_THREADS=1 \
+python CL_vs_FL.py -d 1
+```
+
+### Command Arguments
+
+| Argument / Option | Description |
+| --- | --- |
+| `-d <dataset_id>` | Specifies the dataset ID used for the interpretability experiment. |
+| `taskset -c <cores>` | Restricts the process to the specified CPU cores. The core IDs can be changed according to available compute resources. |
+| `OMP_NUM_THREADS=1` | Limits OpenMP operations to one thread. |
+| `MKL_NUM_THREADS=1` | Limits Intel MKL operations to one thread. |
+| `OPENBLAS_NUM_THREADS=1` | Limits OpenBLAS operations to one thread. |
+| `NUMEXPR_NUM_THREADS=1` | Limits NumExpr operations to one thread. |
+| `VECLIB_MAXIMUM_THREADS=1` | Limits Apple Accelerate/VecLib operations to one thread. |
+
+For example:
+
+```bash
+python fold_level.py -d 5
+```
+
+runs the fold-level interpretability script using dataset ID `5`.
+
+The CPU core assignments shown above are examples and can be modified based on the available computational resources.
 
 ## Requirements
 
