@@ -2,9 +2,8 @@ from typing import List
 import pandas as pd 
 import os  
 import threading  
-from preprocess.federated import process_federated_datasets, federated_partition, federated_partition_with_fold, information_for_distributed_dataset
-from censoring import *
-from preprocess.encoding import build_global_cat_schema  
+from federated import process_federated_datasets, federated_partition, federated_partition_with_fold, information_for_distributed_dataset
+from encoding import build_global_cat_schema  
 
 
 ################################################## Read Raw CSV #############################################################
@@ -19,6 +18,37 @@ def get_dataframe(name: str) -> pd.DataFrame:
     """
     df = pd.read_csv(f"/home/il66977@ad.umbc.edu/Benchmarking_FSA/datasets/raw_data/{name}.csv")
     return df
+  
+
+################################################## Federated data Partition #########################################################
+
+def federated_partition(data, num_centers, region_column):
+    """
+    Split data according to region across each center
+    Arguments:
+        data -- combined data
+        num_centers -- number of centers
+        region_column -- region column of the dataframe. 
+    Returns:
+        Dict with center_id : indices of data assigned to center
+    """
+
+    # Get unique regions
+    unique_values = sorted(data[region_column].unique())
+
+    # Optional check
+    if num_centers != len(unique_values):
+        print(
+            f"Warning: num_centers ({num_centers}) != number of regions ({len(unique_values)})")
+
+    dict_center_idxs = {}
+    for _, region in enumerate(unique_values):
+
+        # Get indices for this region and store it in a dictionary
+        region_idxs = data.index[data[region_column] == region].tolist()
+        dict_center_idxs[region] = region_idxs
+
+    return dict_center_idxs 
 
 
 
@@ -82,11 +112,8 @@ def get_dataset_names() -> List[str]:
 
         print(f" Survival data {name} processing is done.")
 
-    return None
-
-################################################################################################################################
-
-
+    return None 
+  
 ################################################## Entry Point (Threaded Execution) ##########################################
 
 if __name__ == "__main__":

@@ -229,13 +229,7 @@ def _partition_split(split_data, partition, n_parties, seed_no, column=None):
     Returns 
           dict: client_id -> row indices relative to split_data
     """
-    if partition == "iid":
-        return sample_iid(split_data, n_parties, seed_no)
-
-    elif partition == "non-iid":
-        return non_iid_skewed(split_data, n_parties, seed_no)
-
-    elif partition == "federated":
+    if partition == "federated":
         return federated_partition(split_data, n_parties, column)
 
     else:

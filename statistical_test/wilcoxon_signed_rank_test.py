@@ -72,17 +72,7 @@ df = pd.DataFrame(data)
 
 
 ######################### COMPARATORS #########################
-
-comparators = [
-    "Fed. KM",
-    "AFT Weibull",
-    "Fed. CoxPH",
-    "LinearPH",
-    "DeepPseudo",
-    "DeepHit",
-    "NNPH",
-    "NNnPH"
-]
+comparators = [ "Fed. KM", "AFT Weibull", "Fed. CoxPH", "LinearPH", "DeepPseudo", "DeepHit", "NNPH", "NNnPH"]
 
  
 ######################### FUNCTION FOR WILCOXON + RANK-BISERIAL CORRELATION #########################
@@ -120,40 +110,27 @@ def wilcoxon_comparison(fedpattn, comparator):
         }
  
     ######################### Wilcoxon signed-rank test #########################
-
-    result = wilcoxon(
-        differences,
-        alternative="two-sided",
-        zero_method="wilcox",
-        method="auto"
-    )
+    result = wilcoxon(differences, alternative="two-sided", zero_method="wilcox", method="auto")
 
     W = result.statistic
-    p = result.pvalue
-
+    p = result.pvalue 
    
     ########################## W-L = FedPAttn wins - losses  ######################### 
-
     wins = np.sum(differences > 0)
     losses = np.sum(differences < 0)
 
     
-    ########################## Rank-biserial correlation  ############################ 
-    #                       r_rb = (W+ - W-) / (W+ + W-)
-    ##################################################################################
-
-    ranks = rankdata(np.abs(differences), method="average")
-
+    ###### Rank-biserial correlation, r_rb = (W+ - W-) / (W+ + W-)  ###################  
+    ranks = rankdata(np.abs(differences), method="average") 
     W_plus = np.sum(ranks[differences > 0])
-    W_minus = np.sum(ranks[differences < 0])
-
+    
+    W_minus = np.sum(ranks[differences < 0]) 
     r_rb = (W_plus - W_minus) / (W_plus + W_minus)
 
      
     ########################## Median C-index difference ################################  
 
-    median_delta = np.median(differences)
-
+    median_delta = np.median(differences) 
     return {
         "n": n,
         "wins": wins,
@@ -168,96 +145,44 @@ def wilcoxon_comparison(fedpattn, comparator):
 ######################################## 4. RUN ALL COMPARISONS  ########################## 
 
 results = []
-
 for comparator in comparators:
-
-    result = wilcoxon_comparison(
-        df["FedPAttn"],
-        df[comparator]
-    )
-
+    result = wilcoxon_comparison(df["FedPAttn"], df[comparator])
     result["Comparator"] = comparator 
-    results.append(result)
-
-
+    results.append(result) 
+    
 results_df = pd.DataFrame(results)
  
 ######################################## 5. HOLM CORRECTION ###################################
-
 results_df["p_Holm"] = np.nan
-
 valid = results_df["p"].notna()
-
-results_df.loc[valid, "p_Holm"] = multipletests(
-    results_df.loc[valid, "p"],
-    method="holm"
-)[1]
+results_df.loc[valid, "p_Holm"] = multipletests( results_df.loc[valid, "p"], method="holm" )[1]
 
  
 ############################ 6. FORMAT W-L COLUMN ################################################  
-
-results_df["W–L"] = (
-    results_df["wins"].astype(int).astype(str)
-    + "–" +
-    results_df["losses"].astype(int).astype(str)
-)
+results_df["W–L"] = ( results_df["wins"].astype(int).astype(str) + "–" + results_df["losses"].astype(int).astype(str))
 
  
 ############################  7. REORDER COLUMNS  #####################################################  
-
-results_df = results_df[
-    [
-        "Comparator",
-        "n",
-        "W–L",
-        "W",
-        "p",
-        "p_Holm",
-        "Med. ΔC",
-        "r_rb"
-    ]
-]
+results_df = results_df[[ "Comparator", "n", "W–L", "W", "p", "p_Holm", "Med. ΔC", "r_rb" ]]
  
 #############################  8. ROUND NUMBERS ############################################################# 
-
 results_df["W"] = results_df["W"].round(0).astype(int)
-
-results_df["p"] = results_df["p"].map(
-    lambda x: f"{x:.5f}"
-)
-
-results_df["p_Holm"] = results_df["p_Holm"].map(
-    lambda x: f"{x:.5f}"
-)
-
-results_df["Med. ΔC"] = results_df["Med. ΔC"].map(
-    lambda x: f"{x:+.4f}"
-)
-
-results_df["r_rb"] = results_df["r_rb"].map(
-    lambda x: f"{x:+.3f}"
-)
+results_df["p"] = results_df["p"].map( lambda x: f"{x:.5f}") 
+results_df["p_Holm"] = results_df["p_Holm"].map( lambda x: f"{x:.5f}")
+ 
+results_df["Med. ΔC"] = results_df["Med. ΔC"].map( lambda x: f"{x:+.4f}") 
+results_df["r_rb"] = results_df["r_rb"].map( lambda x: f"{x:+.3f}")
 
  
 ####################################### 9. BOLD Holm-CORRECTED SIGNIFICANT RESULTS ################################  
 
 # Need numeric p_Holm again for checking significance
-holm_numeric = multipletests(
-    results_df["p"].astype(float),
-    method="holm"
-)[1]
+holm_numeric = multipletests(results_df["p"].astype(float),method="holm")[1]
+results_df["p_Holm_numeric"] = holm_numeric 
 
-results_df["p_Holm_numeric"] = holm_numeric
-
-results_df["p_Holm"] = [
-    f"\\textbf{{{p:.5f}}}" if p < 0.05 else f"{p:.5f}"
-    for p in holm_numeric
-]
-
+results_df["p_Holm"] = [ f"\\textbf{{{p:.5f}}}" if p < 0.05 else f"{p:.5f}"  for p in holm_numeric] 
 results_df.drop(columns=["p_Holm_numeric"], inplace=True)
-
  
 ####################################### 10. PRINT RESULT ######################################################### 
-
 print(results_df.to_string(index=False))
 results_df.to_csv("result.csv")
