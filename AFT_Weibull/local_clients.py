@@ -13,8 +13,7 @@ from utils import *
 import os
 from scipy.stats import combine_pvalues
 import traceback
-from torchsurv.loss.weibull import neg_log_likelihood_weibull
-torch.cuda.set_per_process_memory_fraction(0.15, 0)
+from torchsurv.loss.weibull import neg_log_likelihood_weibull 
 
 ########################## Function for training the model  #####################################
 
@@ -79,8 +78,7 @@ def evaluate(val_loader, weibull_model, device="cpu"):
                 continue
 
             log_hazards_batch = weibull_model(X_batch)
-            val_loss += neg_log_likelihood_weibull(
-                log_hazards_batch, D_batch, Y_batch, reduction='sum')
+            val_loss += neg_log_likelihood_weibull( log_hazards_batch, D_batch, Y_batch, reduction='sum')
             num_points += X_batch.size(0)
 
         if num_points == 0:

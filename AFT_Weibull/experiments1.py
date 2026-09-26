@@ -8,8 +8,10 @@ from math import *
 import warnings
 from utils import *
 import os
-import argparse
+from federated.aggregation import fedavg
+from config import get_args
 import numpy as np
+from datasets.data_processing import prepare_survival_data, get_local_dataset
 import builtins 
 import torch
 from copy import deepcopy  
@@ -24,39 +26,6 @@ proc = psutil.Process(os.getpid())
 
 ################################################### Get Arguments ###########################################################################
 
-
-def get_args():
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--model', type=str, default='FedPseudo', help='neural network used in training')
-    parser.add_argument('--dataset', type=str, default='metabric', help='dataset used for training')
-    parser.add_argument(  '--net_config', type=lambda x: list(map(int, x.split(', '))))
-    parser.add_argument('--batch_size', type=int, default=128, help='input batch size for training (default: 64)')
-    parser.add_argument('--lr', type=float, default=0.01, help='learning rate (default: 0.01)')
-    parser.add_argument('--epochs', type=int, default=100, help='number of local epochs')
-    parser.add_argument('--n_parties', type=int, default=5, help='number of workers in a distributed cluster')
-    parser.add_argument('--alg', type=str, default='fedavg', help='communication strategy: fedavg/fedprox')
-    parser.add_argument('--comm_round', type=int, default=10, help='number of maximum communication round')
-    parser.add_argument('--patience', type=int, default=20,  help='number of patience')
-    parser.add_argument('--eval_every', type=int, default=5, help='compute C-index every N epochs')
-    parser.add_argument('--is_same_initial', type=int, default=1,  help='Whether initial all the models with the same parameters in fedavg')
-    parser.add_argument('--init_seed', type=int, default=0, help="Random seed")
-    parser.add_argument('--run_id', type=int, default=0, help="ID for 5-fold cross validation")
-    parser.add_argument('--dropout_p', type=float, required=False, default=0.0, help="Dropout probability. Default=0.0")
-    parser.add_argument('--datadir', type=str, required=False, default="./data/", help="Data directory")
-    parser.add_argument('--reg', type=float, default=1e-5, help="L2 regularization strength")
-    parser.add_argument('--logdir', type=str, required=False, default="./logs/", help='Log directory path')
-    parser.add_argument('--modeldir', type=str, required=False, default="./models/", help='Model directory path')
-    parser.add_argument('--device', type=str, default='cuda:0', help='The device to run the program')
-    parser.add_argument('--log_file_name', type=str,  default=None, help='The log file name')
-    parser.add_argument('--optimizer', type=str, default='adam', help='the optimizer')
-    parser.add_argument('--sample', type=float, default=1, help='Sample ratio for each communication round')
-    parser.add_argument('--pseudo_perc_interval', type=int, default=10,  help='Interval for pseudo values calculation')
-    parser.add_argument('--sensitivity', type=float, default=2.0, help='sensitivity')
-    parser.add_argument('--epsilon', type=float, default=5.0, help='epsilon')
-    parser.add_argument('--partition', type=str, default='iid', help='the data partitioning strategy')
-
-    args = parser.parse_args()
-    return args
 
 
 def mem_mb():
@@ -95,167 +64,19 @@ if __name__ == '__main__':
 ################################################### Data loading ##################################################################
 
     start = time.time()
+    data = prepare_survival_data(args)
 
-    # Combined the datasets from clients for centralized training
-    tr_data_len = []
-    X_train_local_non_std = []
-    X_train_local_std = []
+    X_train = data.centralized.train.X
+    train_time = data.centralized.train.time
+    train_event = data.centralized.train.event
 
-    X_val_local_non_std = []
-    X_val_local_std = []
+    X_val = data.centralized.val.X
+    val_time = data.centralized.val.time
+    val_event = data.centralized.val.event
 
-    X_test_local_non_std = []
-    X_test_local_std = []
-
-    train_time_local = []
-    train_status_local = []
-
-    val_time_local = []
-    val_status_local = []
-
-    test_time_local = []
-    test_status_local = []
-
-    train_pseudo_local = []
-    val_pseudo_local = []
-
-    feature_list = None
-    std_list = None
-    global_unique_times = []
-
-    client_name_array = []
-    client_name = None
-
-    pseudo_evaltime = compute_eval_time(args)
-    print(pseudo_evaltime)
-
-    for party_id in range(args.n_parties):
-        train_df, val_df, test_df, client_name, feature_list = get_local_dataset(args.dataset, args.partition, party_id, args.run_id, args)
-        std_list = [c for c in feature_list if c.startswith('num_')]
-        client_name_array.append(client_name)
-
-        column = 'status' if 'status' in train_df.columns else 'event'
-        X_train = np.array(train_df.drop( columns=["time", column]), dtype='float32')
-        X_val = np.array(val_df.drop( columns=["time", column]), dtype='float32')
-        X_test = np.array(test_df.drop( columns=["time", column]), dtype='float32')
-
-        train_time, train_status = train_df["time"], train_df[column]
-        val_time, val_status = val_df["time"], val_df[column]
-        test_time, test_status = test_df["time"], test_df[column]
-
-        train_time = np.asarray(train_time).reshape(-1)
-        train_status = np.asarray(train_status).reshape(-1).astype(int)
-
-        val_time = np.asarray(val_time).reshape(-1)
-        val_status = np.asarray(val_status).reshape(-1).astype(int)
-
-        test_time = np.asarray(test_time).reshape(-1)
-        test_status = np.asarray(test_status).reshape(-1).astype(int)
-
-        X_train_loc = pd.DataFrame(X_train)
-        X_train_loc.columns = feature_list
-
-        X_val_loc = pd.DataFrame(X_val)
-        X_val_loc.columns = feature_list
-
-        X_test_loc = pd.DataFrame(X_test)
-        X_test_loc.columns = feature_list
-
-        # std_list = [c for c in feature_list if c.startswith('num_')]
-        # if std_list:
-        #     scaler = StandardScaler().fit(X_train_loc.loc[:, std_list])
-        #     X_train_loc.loc[:, std_list] = scaler.transform( X_train_loc.loc[:, std_list])
-        #     X_val_loc.loc[:, std_list] = scaler.transform( X_val_loc.loc[:, std_list])
-        #     X_test_loc.loc[:, std_list] = scaler.transform( X_test_loc.loc[:, std_list])
-
-        X_train_loc = np.array(X_train_loc, dtype='float32')
-        X_val_loc = np.array(X_val_loc, dtype='float32')
-        X_test_loc = np.array(X_test_loc, dtype='float32')
-
-        X_train_central = np.array(X_train, dtype='float32')
-        X_val_central = np.array(X_val, dtype='float32')
-        X_test_central = np.array(X_test, dtype='float32')
-
-        # training covariates, time, and status
-        X_train_local_non_std.append(X_train_central)
-        X_train_local_std.append(X_train_central)
-        train_time_local.append(train_time)
-        train_status_local.append(train_status)
-
-        # training data length
-        tr_data_len.append(X_train.shape[0])
-
-        # validation covariates, time, and status
-        X_val_local_non_std.append(X_val_central)
-        X_val_local_std.append(X_val_loc)
-        val_time_local.append(val_time)
-        val_status_local.append(val_status)
-
-        # test covariates, time, and status
-        X_test_local_non_std.append(X_test_central)
-        X_test_local_std.append(X_test_loc)
-        test_time_local.append(test_time)
-        test_status_local.append(test_status)
-
-    # concatenation of training covariates
-    X_train_global = np.vstack(X_train_local_non_std)
-    X_train_global = np.array(X_train_global, dtype='float32')
-
-    # concatenation of training time
-    train_time_global = np.concatenate(train_time_local)
-    train_time_global = np.array(train_time_global, dtype='float32')
-
-    # concatenation of training status
-    train_status_global = np.concatenate(train_status_local)
-    train_status_global = np.array(train_status_global, dtype='float32')
-
-    # concatenation of validation covariates
-    X_val_global = np.vstack(X_val_local_non_std)
-    X_val_global = np.array(X_val_global, dtype='float32')
-
-    # concatenation of validation time
-    val_time_global = np.concatenate(val_time_local)
-    val_time_global = np.array(val_time_global, dtype='float32')
-
-    # concatenation of validation status
-    val_status_global = np.concatenate(val_status_local)
-    val_status_global = np.array(val_status_global, dtype='float32')
-
-    # concatenation of test covariates
-    X_test_global = np.vstack(X_test_local_non_std)
-    X_test_global = np.array(X_test_global, dtype='float32')
-
-    # concatenation of test time
-    test_time_global = np.concatenate(test_time_local)
-    test_time_global = np.array(test_time_global, dtype='float32')
-
-    # concatenation of test status
-    test_status_global = np.concatenate(test_status_local)
-    test_status_global = np.array(test_status_global, dtype='float32')
-
-    # Standardize the continuous variables
-    X_train_global = pd.DataFrame(X_train_global)
-    X_train_global.columns = feature_list
-
-    X_val_global = pd.DataFrame(X_val_global)
-    X_val_global.columns = feature_list
-
-    X_test_global = pd.DataFrame(X_test_global)
-    X_test_global.columns = feature_list
-
-    # Standardize the continuous variables
-    # if std_list:
-    #     scaler = StandardScaler().fit(X_train_global.loc[:, std_list])
-    #     X_train_global.loc[:, std_list] = scaler.transform( X_train_global.loc[:, std_list])
-    #     X_val_global.loc[:, std_list] = scaler.transform( X_val_global.loc[:, std_list])
-    #     X_test_global.loc[:, std_list] = scaler.transform( X_test_global.loc[:, std_list])
-
-    X_train_global = np.array(X_train_global, dtype='float32')
-    X_val_global = np.array(X_val_global, dtype='float32')
-    X_test_global = np.array(X_test_global, dtype='float32')
-
-    print("X_val shape:", X_val_global.shape)
-    print("X_test shape:", X_test_global.shape)
+    X_test = data.centralized.test.X
+    test_time = data.centralized.test.time
+    test_event = data.centralized.test.event
 
 ################################################### End Data loading ##################################################################
 
@@ -337,29 +158,20 @@ if __name__ == '__main__':
             
             # Keep only clients that produced valid local models.
             valid_clients = [client_id for client_id in selected if nets[client_id] is not None]
-            total_data_points = sum(tr_data_len[client_id] for client_id in valid_clients)
+            valid_client_sizes = sum(tr_data_len[client_id] for client_id in valid_clients)
 
-            new_global_para = None 
-            for client_id in valid_clients:
-                aggregation_weight = ( tr_data_len[client_id] / total_data_points ) 
-                net_para = nets[client_id].cpu().state_dict()
-
-                if new_global_para is None:
-                    new_global_para = {
-                        key: value * aggregation_weight
-                        for key, value in net_para.items()
-                    }
-                else:
-                    for key, value in net_para.items():
-                        new_global_para[key] += ( value * aggregation_weight)
-
-            global_model.load_state_dict(new_global_para)
             
+
+            
+            valid_models = [nets[client_id] for client_id in valid_clients]
+            global_state = fedavg(valid_models, valid_client_sizes) 
+            global_model.load_state_dict(global_state)
+             
             # 5. Evaluate the newly aggregated global model on clients
             eval_clients = list(range(args.n_parties))
             
             try:
-                global_val_cindex, test_cindex, test_brier, test_nbll, test_p_value, test_MAE_PO = evaluate_global_model_on_clients( global_model, eval_clients, X_val_local_std, val_time_local,  val_status_local,  X_test_local_std,  test_time_local,  test_status_local,  train_time_local,  train_status_local, pseudo_evaltime,  device=args.device)
+                global_val_cindex, test_cindex, test_brier, test_nbll, test_p_value, test_MAE_PO = evaluate_global_model_on_clients(global_model, eval_clients, X_val_local_std, val_time_local,  val_status_local,  X_test_local_std,  test_time_local,  test_status_local,  train_time_local,  train_status_local, pseudo_evaltime,  device=args.device)
             except Exception as e:
                 print( f"[Exception in train_net method]:  {type(e).__name__}: {e}")
                 traceback.print_exc()
@@ -421,6 +233,7 @@ if __name__ == '__main__':
         # report the metrics from the best validation round, not the last round
         final_round = early_stopping.best_round if early_stopping.best_round is not None else comm_round
         final_val_cidx = early_stopping.best_val_cindex if np.isfinite(early_stopping.best_val_cindex) else global_val_cindex 
+        
         final_test_cidx = early_stopping.best_test_cindex if early_stopping.best_test_cindex is not None else test_cindex  
         final_test_brier = early_stopping.best_test_brier if early_stopping.best_test_brier is not None else test_brier
         final_test_nbll = early_stopping.best_test_nbll if early_stopping.best_test_nbll is not None else test_nbll 
@@ -484,3 +297,4 @@ if __name__ == '__main__':
     df = pd.DataFrame([row]) 
     file_exists = os.path.exists(csv_path)
     df.to_csv(csv_path, mode="a", header=not file_exists, index=False)
+            global_state = fedavg([nets[client_id] for client_id in valid_clients], valid_client_sizes)             global_state = fedavg([nets[client_id] for client_id in valid_clients], valid_client_sizes) 

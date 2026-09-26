@@ -2,6 +2,9 @@ from dataclasses import dataclass
 from typing import List
 import numpy as np
 from datasets.data_loader import get_local_dataset
+from torch.utils.data import Dataset 
+import pandas as pd
+import torch
 
 @dataclass
 class SurvivalSplit:
@@ -91,11 +94,11 @@ def prepare_survival_data(args):
         pass
     else:
         centralized = build_centralized_data(clients)
-        return PreparedSurvivalData( clients=clients, centralized=centralized, feature_names=feature_names) 
+        return PreparedSurvivalData( clients=clients, centralized=centralized, feature_names=feature_names)  
+        
     
-    
-    
-  
+################################################## Centralized Data ######################################################
+
 def build_centralized_data(clients):
 
     train = SurvivalSplit(
@@ -117,3 +120,34 @@ def build_centralized_data(clients):
     )
 
     return CentralizedSurvivalData(train=train, val=val, test=test)
+
+
+################################################## Evaluation Time Points ############################################
+
+def compute_eval_times(data, interval=10):
+    times = []
+    for client in data.clients: 
+        times.append(client.train.time)
+        times.append(client.val.time)
+
+    global_times = np.unique(np.concatenate(times))
+
+    return np.percentile(
+        global_times,
+        np.arange(interval, 99, interval),
+    )
+
+
+################################################## Data Builder ######################################################
+  
+class SurvivalDataset(Dataset):
+    def __init__(self, X, time, event): 
+        self.X = torch.as_tensor( X, dtype=torch.float32)
+        self.time = torch.as_tensor( time, dtype=torch.float32)
+        self.event = torch.as_tensor( event, dtype=torch.float32)
+
+    def __len__(self):
+        return len(self.X)
+
+    def __getitem__(self, idx):
+        return  self.X[idx], self.time[idx], self.event[idx],

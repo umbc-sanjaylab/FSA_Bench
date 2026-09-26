@@ -119,54 +119,6 @@ class EarlyStopping:
                 self.directory, self.checkpoint_pth))
 
 
-######################################### Region from Federated Dataset by Client ID ########################################
-
-def get_client_name_for_federated_datasets(dataset, client_id):
-    dataset_with_region = {
-        "TCGA": ["South", "West", "Midwest", "Northeast", "Europe", "Canada", "Other"],
-        "Aids2": ['NSW', 'Other', 'QLD', 'VIC'],
-        "LeukSurv": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24],
-        "Pbc3": ['London', 'Copenhagen', 'Hvidovre', 'Barcelona', 'Munich', 'Lyon'],
-        "Dialysis": [120, 128, 184, 217, 344, 561, 562, 641, 741, 743, 917, 918, 936, 954, 983, 984, 1029, 1039,
-                     1048, 1051, 1053, 1061, 1064, 1070, 1071, 1072, 1093, 1100, 1159, 1372, 1437, 1654, 1692,
-                     1699, 2026, 2210, 2211, 2242, 2320, 2351, 2611, 2632, 2811, 2844, 2987, 3064, 3596, 3675,
-                     4122, 4157, 4163, 4779, 4825, 5089, 5135, 5419, 5423, 5432, 5481, 5495, 5513, 5514, 5543,
-                     5653, 5681, 5692, 5768],
-        "d.oropha.rec": [2, 5, 4, 6, 3, 1],
-        "cgd": ['Europe:Amsterdam', 'Europe:other', 'US:NIH', 'US:other'],
-        "uis": ["A", "B"],
-        "scania":  [1, 2, 3, 4, 5],
-        "seer": [1, 2, 3]
-    }
-
-    region_list = dataset_with_region[dataset]
-    return region_list[client_id]
-
-################################################## Get Local Dataset ######################################################
-
-
-def get_local_dataset(dataset, partition, client_id, run_id, args):
-    if partition == 'centralized':
-        client_id = 0
-
-    client_name = None
-    if partition == "federated":
-        client_name = get_client_name_for_federated_datasets(dataset, client_id)
-        dataset_directory = f"{args.datadir}/{dataset}/{partition}/{client_name}/{run_id}/"
-    else:
-        client_name = client_id
-        dataset_directory = f"{args.datadir}/{dataset}/{partition}/{client_id}/{run_id}/"
-        print(f"client is is {client_id} and dataset directory is {dataset_directory}") 
-
-    train_df = pd.read_csv(dataset_directory + "train.csv")
-    val_df = pd.read_csv(dataset_directory + "val.csv")
-    test_df = pd.read_csv(dataset_directory + "test.csv")
-
-    cols_to_remove = ['time', 'event']
-    new_col_name = train_df.columns.tolist()
-    feature_list = [x for x in new_col_name if x not in cols_to_remove]
-
-    return train_df, val_df, test_df, client_name, feature_list
 
 #################################### Check whether there is any comparable paris ###############################################
 
@@ -278,27 +230,6 @@ def Concordance(model, x, durations, events, evaltime, device="cpu"):
         print("[C-index WARNING] Zero comparable pairs in validation set.")
         return np.nan
 
-################################################## Data Builder ######################################################
-
-
-class DataBuilder(Dataset):
-    def __init__(self, covariates, time, status, feature_list):
-        self.feature_list = feature_list
-        X_covariates_df = pd.DataFrame(covariates, columns=feature_list)
-        self.X_covariates = torch.from_numpy(
-            np.array(X_covariates_df, dtype=np.float32))
-
-        self.time = time
-        self.status = status
-
-    def __len__(self):
-        return len(self.X_covariates)
-
-    def __getitem__(self, idx):
-        return (
-            torch.as_tensor(self.X_covariates[idx], dtype=torch.float32),
-            torch.as_tensor(self.time[idx], dtype=torch.float32),
-            torch.as_tensor(self.status[idx], dtype=torch.float32))
 
 ################################################## Evaluation metrics ######################################################
 
@@ -461,75 +392,4 @@ def Evaluation(model, train_time, train_status, X_test, test_time, test_status, 
           )
 
     return cindex, brier, nbll, p_value, weighted_MAE_PO
-
-########################################## Parameters from trained model ################################################################
-
-
-def get_trainable_parameters(net):
-    'return trainable parameter values as a vector (only the first parameter set)'
-    trainable = filter(lambda p: p.requires_grad, net.parameters())
-    # logger.info("net.parameter.data:", list(net.parameters()))
-    paramlist = list(trainable)
-    N = 0
-    for params in paramlist:
-        N += params.numel()
-    X = torch.empty(N, dtype=torch.float64)
-    X.fill_(0.0)
-    offset = 0
-    for params in paramlist:
-        numel = params.numel()
-        with torch.no_grad():
-            X[offset:offset +
-                numel].copy_(params.data.view_as(X[offset:offset+numel].data))
-        offset += numel
-    return X
-
-########################################## Parameters to PyTorch Model ################################################################
-
-
-def put_trainable_parameters(net, X):
-    'replace trainable parameter values by the given vector (only the first parameter set)'
-    trainable = filter(lambda p: p.requires_grad, net.parameters())
-    paramlist = list(trainable)
-    offset = 0
-    for params in paramlist:
-        numel = params.numel()
-        with torch.no_grad():
-            params.data.copy_(X[offset:offset+numel].data.view_as(params.data))
-        offset += numel
-
-########################################## Store the PyTorch Model in storage ############################################################
-
-
-def save_model(model, model_index, args):
-    with open(args.modeldir+"trained_local_model"+str(model_index), "wb") as f_:
-        torch.save(model.state_dict(), f_)
-    return
-
-########################################## Retrieve the PyTorch Model from storage ########################################################
-
-
-def load_model(model, model_index, device="cpu"):
-    with open("trained_local_model"+str(model_index), "rb") as f_:
-        model.load_state_dict(torch.load(f_))
-    model.to(device)
-    return model
-
-
-def weights_init(m):
-    """
-    Initialise weights of the model.
-    """
-    if (type(m) == nn.ConvTranspose2d or type(m) == nn.Conv2d):
-        nn.init.normal_(m.weight.data, 0.0, 0.02)
-    elif (type(m) == nn.BatchNorm2d):
-        nn.init.normal_(m.weight.data, 1.0, 0.02)
-        nn.init.constant_(m.bias.data, 0)
-    return
-
-########################################## Pseudo Value based Loss Function ##############################################################
-
-
-def pseudo_loss(output, target):
-    loss = torch.mean((target-output)**2)
-    return loss
+ 
