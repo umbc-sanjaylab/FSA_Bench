@@ -1,24 +1,10 @@
-import os
-import traceback
-import torch
-import numpy as np
-
-from copy import deepcopy
-from config import get_args
-from utils import EarlyStopping
-
+from config import get_args 
 from models import MODEL_REGISTRY
-
-from federated.aggregation import evaluate_global_model_on_clients 
+ 
 from datasets.data_processing import prepare_survival_data, compute_eval_times 
+from CL_FL import run_centralized, run_federated 
 
-
-  
-def run_federated( args, data, model_spec, eval_times):
-    pass  
-
-def main():
-
+def main(): 
     args = get_args()
     data = prepare_survival_data(args)
     

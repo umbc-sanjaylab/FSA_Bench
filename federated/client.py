@@ -170,78 +170,138 @@ def train_net_all( net_id, net, X_train, train_time, train_status,  X_val, val_t
      
 
 ################  Training Weibull AFT Model with "FedAvg" framework in Local Client  #################################
-def train_client(net_id,  net, train_dataloader, val_dataloader,  X_val, val_time, val_status,  evaltime, args,  device="cpu"): 
-    modeldir = args.modeldir
-    epochs = args.epochs
+def train_client( client_id, model, train_dataloader, val_dataloader, X_val, val_time, val_event, eval_times, model_spec, args, device="cpu"):
+    """
+    Train one federated client model.
+
+    Model-specific operations such as training loss,
+    validation loss, and survival prediction are obtained
+    from MODEL_REGISTRY through model_spec.
+
+    Client model selection is based on validation C-index.
+    """
+
+    print(f"\nTraining client {client_id}") 
     
-    lr = args.lr
-    opt_name = args.optimizer
-    
-    X_val_tensor = torch.as_tensor(X_val, dtype=torch.float32, device=device)
-    val_time_array = np.asarray(val_time)
-    val_status_array = np.asarray(val_status)
-    
-    valid_val_metric_seen = False
-    has_val_events =  len(val_status_array) > 0 and np.any(val_status_array == 1) 
-
-    print(f"Training network {net_id}")  
-    if opt_name == "adam":
-        optimizer = optim.Adam(filter(lambda p: p.requires_grad, net.parameters()), lr=lr, weight_decay=args.reg)
-    elif opt_name == "adamw":
-        optimizer = AdamW(net.parameters(), lr=lr, correct_bias=False)
-    else:
-        raise ValueError(f"Unsupported optimizer: {opt_name}")
-
-    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode="min", patience=args.patience)
-
-    best_val_cindex = float("-inf")
-    best_model_state = deepcopy(net.state_dict())
-    es = 0
-
-    for epoch in range(epochs):
-        train_loss = train_epoch(train_dataloader, net, optimizer, device)
-        val_loss = evaluate(val_dataloader, net, device)
-        
-        if val_loss is not None and np.isfinite(float(val_loss)):
-            scheduler.step(float(val_loss))
-        else:
-            print(f"Client {net_id}: invalid validation loss at epoch {epoch}: {val_loss}")
-        
-        scheduler.step(val_loss)
-        print(f"client: {net_id} epoch: {epoch}, train loss: {train_loss} and val loss: {val_loss}")
-        
-        metrics = None 
-        if has_val_events:
-            try:
-                metrics = Concordance(net, X_val_tensor, val_time_array, val_status_array, evaltime, device)
-            except Exception as exc:
-                print( f"Client {net_id}: validation C-index unavailable at epoch {epoch}: {exc}") 
-
-        # Calculate the validation Cindex
-        print(f"client: {net_id}, epoch: {epoch}, and  validation metric: {metrics}")  
-        
-        # Early Stopping Criteria
-        if metrics is None or not np.isfinite(metrics):
-              continue
-
-        valid_val_metric_seen = True
-        if metrics > best_val_cindex:
-            best_val_cindex = metrics
-            es = 0
-            best_model_state = deepcopy(net.state_dict())
-        
-        else:
-            es += 1
-            if es >= args.patience:
-                break
-    
-    # Retain the final locally trained state.
-    if not valid_val_metric_seen:
-        best_model_state = deepcopy(net.state_dict())
-    
-    torch.save(best_model_state,  f"{modeldir}/{args.model}_{args.run_id}_{net_id}.pt")
-    net.load_state_dict(best_model_state)
-    net.to(device)
-
-    return net
+    # 1. Get model-specific functions 
+    train_epoch_fn = model_spec["train_epoch"]
+    validation_loss_fn = model_spec[ "validation_loss"]
+    predict_survival_fn = model_spec["predict_survival"]
  
+    # 2. Prepare validation information
+    val_time_array = np.asarray(val_time, dtype=float).reshape(-1) 
+    val_event_array = np.asarray(val_event, dtype=int).reshape(-1)
+    has_val_events =  len(val_event_array) > 0 and np.any(val_event_array == 1) 
+    
+    # 3. Create optimizer 
+    optimizer = create_optimizer( model, args) 
+    scheduler = ( torch.optim.lr_scheduler.ReduceLROnPlateau( optimizer, mode="min", patience=args.patience))
+
+    # 4. Initialize client-side early stopping 
+    best_val_cindex = float("-inf")
+    best_model_state = deepcopy(model.state_dict())
+
+    early_stop_counter = 0 
+    valid_val_metric_seen = False
+
+    
+    # 5. Local training 
+    for epoch in range(args.epochs): 
+       
+        # Model-specific training 
+        train_loss = train_epoch_fn( model, train_dataloader, optimizer, device)
+ 
+        # Model-specific validation loss
+        val_loss = validation_loss_fn( model, val_dataloader, device)
+
+ 
+        # Learning-rate scheduler
+        if val_loss is not None and np.isfinite(float(val_loss)):  
+            scheduler.step(float(val_loss))
+
+        else: 
+            print(f"Client {client_id}, epoch {epoch}: invalid validation loss = {val_loss}")
+ 
+        # Generate validation survival probabilities
+        val_cindex = np.nan 
+        if has_val_events: 
+            try:
+                val_survival = predict_survival_fn( model=model, X=X_val, eval_times=eval_times, device=device) 
+                val_cindex = compute_concordance( survival=val_survival, eval_times=eval_times, durations=val_time_array, events=val_event_array) 
+            except Exception as exc: 
+                print(f"Client {client_id}, epoch {epoch}:  validation C-index unavailable: {exc}") 
+                val_cindex = np.nan
+
+        
+        # Training progress 
+        print(f"Client {client_id} |  Epoch {epoch + 1}/{args.epochs} |  Train loss: {train_loss} | Val loss: {val_loss} | Val C-index: {val_cindex}")
+
+        # 6. Validation-based local early stopping
+        if not has_val_events: 
+            # Continue as we could not calculate the Validation C-index.
+            continue
+
+        if val_cindex is None or not np.isfinite(val_cindex):
+
+            # Preserve your current policy:
+            # undefined validation metrics do not select a model.
+            continue
+
+        valid_val_metric_seen = True 
+        if val_cindex > best_val_cindex: 
+            best_val_cindex = val_cindex 
+            early_stop_counter = 0 
+            best_model_state = deepcopy(model.state_dict()) 
+        else: 
+            early_stop_counter += 1 
+            if early_stop_counter >= args.patience: 
+                print( f"Client {client_id}: early stopping at epoch {epoch + 1}.") 
+                break 
+    
+    # 7. If C-index was never available, retain final local state 
+    if not valid_val_metric_seen: 
+        best_model_state = deepcopy(model.state_dict())
+
+    # 8. Save client checkpoint
+    os.makedirs(args.modeldir, exist_ok=True) 
+    model_path = os.path.join(args.modeldir, f"{args.model}_fold_{args.run_id}_client_{client_id}.pt")  
+    torch.save( best_model_state, model_path) 
+     
+    # 9. Restore selected local model 
+    model.load_state_dict(best_model_state) 
+    model.to(device) 
+    print(f"Client {client_id}: model saved at {model_path}")
+
+    return model
+
+##############################Train Selected Client #######################################################
+
+def train_selected_clients(models, selected_clients, data, model_spec, eval_times, args, device="cpu"):
+    """
+    Train the selected clients during one communication round.
+    """
+
+    for client_id in selected_clients: 
+        model = models[client_id]
+
+        if model is None:
+            continue
+
+        client_data = data.clients[client_id]
+
+        # Training DataLoader 
+        train_dataset = SurvivalDataset( client_data.train.X, client_data.train.time, client_data.train.event, data.feature_names) 
+        train_loader = DataLoader( dataset=train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=1) 
+         
+        # Validation DataLoader 
+        val_dataset = SurvivalDataset( client_data.val.X, client_data.val.time, client_data.val.event, data.feature_names)  
+        val_loader = DataLoader( dataset=val_dataset, batch_size=args.batch_size, shuffle=False, num_workers=1) 
+         
+        # Train local model 
+        models[client_id] = train_client(client_id=client_id,  model=model, eval_times=eval_times, 
+            train_dataloader=train_loader,  val_dataloader=val_loader,
+            X_val=client_data.val.X, val_time=client_data.val.time, val_event=client_data.val.event, 
+            model_spec=model_spec, args=args,  device=device,
+        )
+
+    return models

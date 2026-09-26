@@ -45,8 +45,7 @@ def store_results_in_csv(args, metrics_dict):
     file_exists = os.path.exists(csv_path)
     df.to_csv(csv_path, mode="a", header=not file_exists, index=False)
 
-#################################### Early Stopping Criteria ############################################################
-
+#################################### Early Stopping Criteria ############################################################ 
 
 class EarlyStopping:
     """Stop training if validation C-index does not improve for `patience` rounds."""
