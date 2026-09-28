@@ -15,16 +15,8 @@ def main(args):
     experiment_id = datetime.now().strftime( "%Y%m%d_%H%M%S" )
     config_path, _, server_log_path = write_logger_configuration( args=args, role="server", experiment_id=experiment_id, save_config=True) 
 
-    print(
-        f"Server log file: {server_log_path}"
-    )
+    print(f"Server log file: {server_log_path}")
     net = init_net(args.model, args.device, args)
-    
-    print("DEBUG args.model =", args.model)
-    print("DEBUG args.dataset =", args.dataset)
-    print("DEBUG args.n_parties =", args.n_parties)
-    print("DEBUG args.device =", args.device)
-
     model_spec = get_model_spec(args)
     persistor = PTFileModelPersistor(model=model_spec)
 

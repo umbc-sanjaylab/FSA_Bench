@@ -131,11 +131,7 @@ def compute_eval_times(data, interval=10):
         times.append(client.val.time)
 
     global_times = np.unique(np.concatenate(times))
-
-    return np.percentile(
-        global_times,
-        np.arange(interval, 99, interval),
-    )
+    return np.percentile(  global_times, np.arange(interval, 99, interval))
 
 
 ################################################## Data Builder ######################################################

@@ -29,6 +29,10 @@ def get_args():
     parser.add_argument('--sensitivity', type=float, default=2.0, help='sensitivity')
     parser.add_argument('--epsilon', type=float, default=5.0, help='epsilon')
     parser.add_argument('--partition', type=str, default='iid', help='the data partitioning strategy')
+    parser.add_argument( "--workdir_root", type=str, default="./workdir") 
+    parser.add_argument( "--simulator_threads", type=int, default=4) 
+    parser.add_argument( "--cleanup_workdir", action="store_true") 
+    parser.add_argument( "--external_client_process", action="store_true") 
 
     args = parser.parse_args()
     return args
