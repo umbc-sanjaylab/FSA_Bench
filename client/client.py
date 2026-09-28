@@ -23,6 +23,12 @@ def main(args):
     model_class = model_spec["model"] 
     input_dim = client_data.train.X.shape[1] 
     model = model_class(input_dim)
+    
+    train_dataset = SurvivalDataset(client_data.train.X, client_data.train.time, client_data.train.event)
+    train_loader = DataLoader( dataset=train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=1)
+
+    val_dataset = SurvivalDataset( client_data.val.X, client_data.val.time, client_data.val.event)
+    val_loader = DataLoader( dataset=val_dataset, batch_size=args.batch_size, shuffle=False, num_workers=1)
 
     while flare.is_running(): 
         input_model = flare.receive() 
@@ -47,14 +53,8 @@ def main(args):
 
        
         # Local training 
-        elif phase == "train": 
-            train_dataset = SurvivalDataset(client_data.train.X, client_data.train.time, client_data.train.event)
-            train_loader = DataLoader( dataset=train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=1)
-
-            val_dataset = SurvivalDataset( client_data.val.X, client_data.val.time, client_data.val.event)
-            val_loader = DataLoader( dataset=val_dataset, batch_size=args.batch_size, shuffle=False, num_workers=15)
-            eval_times = np.asarray( meta["eval_times"], dtype=float)
-
+        elif phase == "train":  
+            eval_times = np.asarray( meta["eval_times"], dtype=float) 
  
             try: 
                 model = train_client(
@@ -64,8 +64,9 @@ def main(args):
                     train_dataloader=train_loader, 
                     val_dataloader=val_loader, 
                     model_spec=model_spec,
+                    eval_times=eval_times,
                     args=args,
-                    device="cpu"
+                    device=args.device 
                 ) 
 
                 output_model = flare.FLModel(

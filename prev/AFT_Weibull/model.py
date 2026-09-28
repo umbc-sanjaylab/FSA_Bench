@@ -17,23 +17,16 @@ class WeibullTimeToEventModel(nn.Module):
         self.phi = nn.Parameter(torch.tensor([0.0], dtype=torch.float))
 
         # Important: negative sign because log_scale = -psi when phi=0 and linear≈0
-        self.psi = nn.Parameter(
-            torch.tensor([-torch.log(torch.tensor(100.0))], dtype=torch.float)
-        )
+        self.psi = nn.Parameter( torch.tensor([-torch.log(torch.tensor(100.0))], dtype=torch.float))
 
         self.linear = nn.Linear(num_input_features, 1, bias=False)
 
     def forward(self, inputs):
-        batch_size = inputs.size(0)
-
-        log_params = torch.zeros(
-            batch_size, 2, dtype=torch.float, device=inputs.device
-        )
+        batch_size = inputs.size(0) 
+        log_params = torch.zeros(batch_size, 2, dtype=torch.float, device=inputs.device)
 
         log_params[:, 1] = self.phi
-        log_params[:, 0] = (
-            -self.linear(inputs) - self.psi * torch.exp(-self.phi)
-        ).view(-1)
+        log_params[:, 0] = (-self.linear(inputs) - self.psi * torch.exp(-self.phi) ).view(-1)
 
         return log_params
 

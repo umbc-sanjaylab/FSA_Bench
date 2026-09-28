@@ -2,31 +2,20 @@ import shlex
 from models import init_nets
 from nvflare.job_config.script_runner import ScriptRunner
 from nvflare.app_opt.pt.job_config.base_fed_job import BaseFedJob
-from federated.server.controller import FederatedSurvivalController
-from nvflare.app_opt.pt.file_model_persistor import PTFileModelPersistor
-
- 
-# from datasets.data_processing import prepare_survival_data, compute_eval_times 
-# from CL_FL import  run_federated  
+from server.controller import FederatedSurvivalController
+from nvflare.app_opt.pt.file_model_persistor import PTFileModelPersistor 
 
 def build_nvflare_job(args, experiment_id): 
-    net = init_nets(input_size,  n_parties, args)
+    net = init_nets(args)
     persistor = PTFileModelPersistor(model=net)
 
     # Create BaseFedJob with initial model
-    job = BaseFedJob(initial_model=net, min_clients=args.n_parties, key_metric=None, model_persistor=persistor, 
-                                                    name=f"{args.dataset}_{args.model}_{args.run_id}_{args.partition}_fedavg")  
-    
+    job = BaseFedJob(initial_model=net, min_clients=args.n_parties, key_metric=None, model_persistor=persistor, name=f"{args.dataset}_{args.model}_{args.run_id}_{args.partition}_fedavg")   
     controller = FederatedSurvivalController(
         patience=args.patience,
-        modeldir=args.modeldir,
-        reg=args.reg, lr=args.lr,
-        optimizer=args.optimizer,
-        epochs=args.epochs,
-        partition=args.partition,
-        batch_size=args.batch_size,
-        modelName=args.model,
-        device=args.device,
+        modeldir=args.modeldir,  
+        partition=args.partition, 
+        modelName=args.model, 
         dataset=args.dataset,
         num_clients=args.n_parties,
         num_rounds=args.comm_round,
