@@ -3,30 +3,54 @@
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![PyTorch](https://img.shields.io/badge/PyTorch-2.0+-red.svg)](https://pytorch.org/)
 [![NVIDIA FLARE](https://img.shields.io/badge/NVIDIA%20FLARE-2.7+-orange.svg)](https://nvflare.readthedocs.io/)
-[![License: UMBC-Prof-Sanjay-Lab](https://img.shields.io/badge/License-UMBC_Prof_Sanjay_Lab-yellow.svg)](LICENSE)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
  
-
 ## Overview
 
 Paper • Installation • Required Packages • Running Experiments • Datasets • Evaluation Metrics • Experimental Settings • How to Cite
 
 ## Paper
 
-For more details, see our paper **FSA-Bench: Benchmarking Federated Survival Models**, accepted at the **Machine Learning for Healthcare (MLHC) 2026** conference.
+This repository contains the official codebase for **[FSA-Bench: Benchmarking Federated Survival Models](https://proceedings.mlr.press/v340/ahmed26a.html)**, published at the **11th Machine Learning for Healthcare Conference (MLHC 2026)**.
 
-> Paper link will be added upon publication. 
+Please cite the paper if you use FSA-Bench, its code, or datasets:
+
+Sultan Ahmed and Sanjay Purushotham, "FSA-Bench: Benchmarking Federated Survival Models," in *Proceedings of the 11th Machine Learning for Healthcare Conference*, Proceedings of Machine Learning Research (PMLR), vol. 340, pp. 30–54, 2026.
+
+### BibTeX
+
+```bibtex
+@InProceedings{pmlr-v340-ahmed26a,
+  title     = {FSA-Bench: Benchmarking Federated Survival Models},
+  author    = {Ahmed, Sultan and Purushotham, Sanjay},
+  booktitle = {Proceedings of the 11th Machine Learning for Healthcare Conference},
+  pages     = {30--54},
+  year      = {2026},
+  volume    = {340},
+  series    = {Proceedings of Machine Learning Research},
+  publisher = {PMLR},
+  url       = {https://proceedings.mlr.press/v340/ahmed26a.html}
+}
+```
 
 ## Installation
 
-### From Source
+To run the experiments, first clone the repository:
 
 ```bash
 git clone https://github.com/umbc-sanjaylab/FSA_Bench.git
 cd FSA_Bench
+```
+
+Then configure the environment using one of the following options.
+
+### Option 1: Install with pip
+
+```bash
 pip install -r requirements.txt
 ```
 
-### Configure the Environment
+### Option 2: Install with Conda
 
 ```bash
 conda create -n FSA_Bench python=3.10
@@ -36,9 +60,7 @@ pip install -r requirements.txt
 
 ##  Running Experiments
 
-The shell scripts in FSA-Bench framework are in the `scripts/` directory to reproduce the centralized and federated experiments. Each script specifies the dataset, model, cross-validation folds, batch size, training configuration, and output directories. 
-
-From the repository root, we can execute any script as:
+The shell scripts in FSA-Bench framework are in the `scripts/` directory to reproduce the centralized and federated experiments.  From the repository root, we can execute any script as:
 
 ```bash
 bash scripts/<script_name>.sh 
@@ -55,9 +77,12 @@ The centralized experiments can be executed using the following scripts:
 | DeepPseudo | `bash scripts/DeepPseudo_CL.sh` |
 | Fed. CoxPH | `bash scripts/Fed_CoxPH_CL.sh` |
 | Fed. Kaplan-Meier | `bash scripts/Fed_KM_CL.sh` |
-| FedPseudo | `bash scripts/FedPseudo_CL.sh` |
+| FedPDNN | `bash scripts/FedPseudo_CL.sh` |
+| FedPLSTM | `bash scripts/FedPseudo_CL.sh` |
+| FedPAttn | `bash scripts/FedPseudo_CL.sh` |
 | LinearPH | `bash scripts/LinearPH_NNph_CL.sh` |
-| NNPH | `bash scripts/NNnPH_CL.sh` |
+| NNPH | `bash scripts/LinearPH_NNph_CL.sh` |
+| NNnPH | `bash scripts/NNnPH_CL.sh` |
 
 ### Federated Learning
 
@@ -70,9 +95,12 @@ The federated experiments can be executed using the following scripts:
 | DeepPseudo | `bash scripts/DeepPseudo_FL.sh` |
 | Fed. CoxPH | `bash scripts/Fed_CoxPH_FL.sh` |
 | Fed. Kaplan-Meier | `bash scripts/Fed_KM_FL.sh` |
-| FedPseudo | `bash scripts/FedPseudo_FL.sh` |
+| FedPDNN | `bash scripts/FedPseudo_FL.sh` |
+| FedPLSTM | `bash scripts/FedPseudo_FL.sh` |
+| FedPAttn | `bash scripts/FedPseudo_FL.sh` |
 | LinearPH | `bash scripts/LinearPH_NNPH_FL.sh` |
-| NNPH | `bash scripts/NNnPH_FL.sh` |
+| NNPH | `bash scripts/LinearPH_NNPH_FL.sh` |
+| NNnPH | `bash scripts/NNnPH_FL.sh` |
 
 ### Common Training Configuration
 
@@ -114,25 +142,7 @@ The number of cross-validation folds, federated clients, and batch sizes vary ac
 | **SEER** | 25,749 | 11 | 25.36 | 74.64 | 3 | [Link](https://seer.cancer.gov/) |
 
 
-> Dataset availability and configuration may vary across individual model scripts.
-
-### Running Selected Dataset Groups
-
-The experiment scripts accept an optional group ID to select a predefined group of datasets. For example:
-
-```bash
-bash scripts/DeepHit_CL.sh 1
-bash scripts/DeepHit_FL.sh 1
-```
-
-### Dry Run
-
-For scripts supporting dry-run mode, set `DRY_RUN=1` to inspect the generated experiment commands without starting training:
-
-```bash
-DRY_RUN=1 bash scripts/DeepHit_CL.sh
-DRY_RUN=1 bash scripts/DeepHit_FL.sh
-```
+> Dataset availability and configuration may vary across individual model scripts. 
  
 ## Interpretability
 
@@ -147,37 +157,19 @@ cd interpretability
 ### Fold-Level Interpretation
 
 ```bash
-taskset -c 8-10 \
-env OMP_NUM_THREADS=1 \
-    MKL_NUM_THREADS=1 \
-    OPENBLAS_NUM_THREADS=1 \
-    NUMEXPR_NUM_THREADS=1 \
-    VECLIB_MAXIMUM_THREADS=1 \
-python fold_level.py -d 5
+python fold_level.py
 ```
 
 ### Site-Level Interpretation
 
 ```bash
-taskset -c 11-12 \
-env OMP_NUM_THREADS=1 \
-    MKL_NUM_THREADS=1 \
-    OPENBLAS_NUM_THREADS=1 \
-    NUMEXPR_NUM_THREADS=1 \
-    VECLIB_MAXIMUM_THREADS=1 \
-python site_level.py -d 1
+python site_level.py
 ```
 
 ### Partition-Level Interpretation
 
 ```bash
-taskset -c 21-22 \
-env OMP_NUM_THREADS=1 \
-    MKL_NUM_THREADS=1 \
-    OPENBLAS_NUM_THREADS=1 \
-    NUMEXPR_NUM_THREADS=1 \
-    VECLIB_MAXIMUM_THREADS=1 \
-python CL_vs_FL.py -d 1
+python CL_vs_FL.py
 ```
 
 ### Command Arguments
@@ -218,20 +210,20 @@ numpy==1.24.3
 If you use FSA-Bench, its code, or datasets in your research, please cite our paper:
 
 ```bibtex
-@inproceedings{ahmed2026fsabench,
-  title     = {FSA-Bench: Benchmarking Federated Survival Models},
-  author    = {Ahmed, Sultan and Purushotham, Sanjay},
-  year      = {2026}
+@inproceedings{ahmed2026fsa,
+  title={FSA-Bench: Benchmarking Federated Survival Models},
+  author={Ahmed, Sultan and Purushotham, Sanjay},
+  booktitle={Machine Learning for Healthcare Conference},
+  pages={30--54},
+  year={2026},
+  organization={PMLR}
+
 }
-```
-
-
-
+``` 
+ 
 ## License
 
-This project is licensed under the UMBC Professor Sanjay Lab license.
-
-See the [LICENSE](LICENSE) file for details.
+This project is licensed under the [MIT License](LICENSE).
 
 ---
 
