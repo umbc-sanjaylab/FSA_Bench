@@ -9,8 +9,7 @@ from pycox.models import CoxPH
 from utils import negative_llh
 
 ####################################  Training Centralized CoxPH Model  ##################################################################### 
-def train_net_all(net_id, model, X_train, y_train, val_data, epochs, lr, optimizer,  train_time, train_status,  X_val, val_time, val_status, X_test, test_time, test_status, evaltime, args, device):
-
+def train_net_all(net_id, model, X_train, y_train, val_data, epochs, lr, optimizer,  train_time, train_status,  X_val, val_time, val_status, X_test, test_time, test_status, evaltime, args, device): 
     print('Training network %s' % str(net_id))
     print('Training network %s' % str(net_id))
 
