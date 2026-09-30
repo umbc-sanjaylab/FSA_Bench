@@ -68,7 +68,8 @@ pycox==0.2.3
 torch==2.0.1
 scikit-learn==1.2.2
 pandas==1.3.5
-numpy==1.24.3 
+numpy==1.24.3
+``` 
 
 ##  Running Experiments
 
@@ -202,9 +203,7 @@ For example:
 python fold_level.py -d 5
 ```
 
-runs the fold-level interpretability script using dataset ID `5`.
-
-The CPU core assignments shown above are examples and can be modified based on the available computational resources.
+runs the fold-level interpretability script using dataset ID `5`. 
 
  
 ## License
