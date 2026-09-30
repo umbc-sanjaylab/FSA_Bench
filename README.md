@@ -189,21 +189,13 @@ python CL_vs_FL.py
 
 | Argument / Option | Description |
 | --- | --- |
-| `-d <dataset_id>` | Specifies the dataset ID used for the interpretability experiment. |
-| `taskset -c <cores>` | Restricts the process to the specified CPU cores. The core IDs can be changed according to available compute resources. |
-| `OMP_NUM_THREADS=1` | Limits OpenMP operations to one thread. |
-| `MKL_NUM_THREADS=1` | Limits Intel MKL operations to one thread. |
-| `OPENBLAS_NUM_THREADS=1` | Limits OpenBLAS operations to one thread. |
-| `NUMEXPR_NUM_THREADS=1` | Limits NumExpr operations to one thread. |
-| `VECLIB_MAXIMUM_THREADS=1` | Limits Apple Accelerate/VecLib operations to one thread. |
+| `-d <dataset_name>` | Specifies the dataset name used for the interpretability experiment. | 
 
-For example:
+For example, this command runs the fold-level interpretability script using dataset name `seer`. 
 
 ```bash
-python fold_level.py -d 5
-```
-
-runs the fold-level interpretability script using dataset ID `5`. 
+python fold_level.py -d seer
+```  
 
  
 ## License
