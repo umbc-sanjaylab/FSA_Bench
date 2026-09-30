@@ -1,85 +1,106 @@
+from pathlib import Path
+
 import numpy as np 
 import pandas as pd 
-import concurrent.futures
-import warnings
+import concurrent.futures 
 from survshap import SurvivalModelExplainer, ModelSurvSHAP
 from lifelines import KaplanMeierFitter
 
+import os, argparse, warnings  
+from pathlib import Path 
+from .config import DATASET_FOLDS
 
+####################################### Arguments Method ####################################################################
+
+def get_args(description): 
+    parser = argparse.ArgumentParser( description=description) 
+    parser.add_argument("-d", "--dataset", required=True, choices=DATASET_FOLDS.keys(), help="Dataset to analyze.") 
+    return parser.parse_args()  
+
+####################################### Folds Method ####################################################################
+
+def get_folds(dataset): 
+    return list(range(DATASET_FOLDS[dataset])) 
+
+####################################### logger close ####################################################################
+
+def close_logger(logger): 
+    for handler in logger.handlers[:]:
+        handler.flush() 
+        handler.close()
+        logger.removeHandler(handler) 
+ 
 
 ####################################### partition wise configuration ####################################################################
 
 def get_data_model_directory_partition_wise(model_name):
-    CENT_TMPL, FED_TMPL = None, None 
-    if model_name in ["FedPDNN", "FedPLSTM", "FedPAttn"] : 
-        CENT_TMPL = "/home/il66977@ad.umbc.edu/Benchmarking_FSA/FedPseudo_Flare/models/federated_data/centralized/LeukSurv/LeukSurv/{MODEL_NAME}_global_{fold}.pt"
-        FED_TMPL = "/home/il66977@ad.umbc.edu/Benchmarking_FSA/FedPseudo_Flare/models/federated_data/federated/LeukSurv/{MODEL_NAME}/LeukSurv/{MODEL_NAME}_global_{fold}.pt"
-    elif model_name == "AFT_Weibull": 
-        CENT_TMPL = "/home/il66977@ad.umbc.edu/Benchmarking_FSA/AFT_Weibull/models/federated_data/centralized/LeukSurv/{MODEL_NAME}_{fold}_0.pt"
-        FED_TMPL = "/home/il66977@ad.umbc.edu/Benchmarking_FSA/AFT_Weibull/models/federated_data/federated/LeukSurv/{MODEL_NAME}_model_run_{fold}.tar"
-    elif model_name == "DeepHit": 
-        CENT_TMPL = "/home/il66977@ad.umbc.edu/Benchmarking_FSA/DeepHit/models/federated_data/centralized/LeukSurv/{MODEL_NAME}_{fold}_0.pt"
-        FED_TMPL = "/home/il66977@ad.umbc.edu/Benchmarking_FSA/DeepHit/models/federated_data/federated/LeukSurv/{MODEL_NAME}_model_run_{fold}.pt"
-    elif model_name == "LinearPH": 
-        CENT_TMPL = "/home/il66977@ad.umbc.edu/Benchmarking_FSA/LinearPH_NNph/models/federated_data/centralized/LeukSurv/Centralized_LinearPH_LeukSurv_{fold}_0.pt"
-        FED_TMPL = "/home/il66977@ad.umbc.edu/Benchmarking_FSA/LinearPH_NNph/models/federated_data/federated/LeukSurv/LinearPH_model_run_{fold}.pt"
-    elif model_name == "NNPH": 
-        CENT_TMPL = "/home/il66977@ad.umbc.edu/Benchmarking_FSA/LinearPH_NNph/models/federated_data/centralized/LeukSurv/Centralized_NNph_LeukSurv_{fold}_0.pt"
-        FED_TMPL =  "/home/il66977@ad.umbc.edu/Benchmarking_FSA/LinearPH_NNph/models/federated_data/federated/LeukSurv/NNph_model_run_{fold}.pt"
-    elif model_name == "Fed_CoxPH": 
-        CENT_TMPL = "/home/il66977@ad.umbc.edu/Benchmarking_FSA/Fed_CoxPH/models/federated_data/centralized/LeukSurv/Fed_CoxPH_{fold}_0.pt"
-        FED_TMPL = "/home/il66977@ad.umbc.edu/Benchmarking_FSA/Fed_CoxPH/models/federated_data/federated/LeukSurv/CoxPH_model_run_{fold}.pt"
-    else: 
-        raise ValueError("model name did not match with our repository")
-         
-    return CENT_TMPL, FED_TMPL 
-
-####################################### site level configuration ####################################################################
-
-def get_data_model_directory_site_level(model_name, data):
-    CKPT_TMPL = None 
-    if model_name in ["FedPDNN", "FedPLSTM", "FedPAttn"] : 
-        CKPT_TMPL = f"/home/il66977@ad.umbc.edu/Benchmarking_FSA/FedPseudo_Flare/models/federated_data/federated/{data}/{model_name}/{data}/{model_name}_global_{{fold}}.pt"
-    elif model_name == "AFT_Weibull": 
-        CKPT_TMPL = f"/home/il66977@ad.umbc.edu/Benchmarking_FSA/AFT_Weibull/models/federated_data/federated/{data}/{model_name}_model_run_{{fold}}.tar"
-    elif model_name == "DeepHit": 
-         CKPT_TMPL = f"/home/il66977@ad.umbc.edu/Benchmarking_FSA/DeepHit/models/federated_data/federated/{data}/{model_name}_model_run_{{fold}}.pt"
-    elif model_name == "LinearPH": 
-        CKPT_TMPL = f"/home/il66977@ad.umbc.edu/Benchmarking_FSA/LinearPH_NNph/models/federated_data/federated/{data}/LinearPH_model_run_{{fold}}.pt"
-    elif model_name == "NNPH": 
-        CKPT_TMPL = f"/home/il66977@ad.umbc.edu/Benchmarking_FSA/LinearPH_NNph/models/federated_data/federated/{data}/NNph_model_run_{{fold}}.pt"
-    elif model_name == "Fed_CoxPH": 
-        CKPT_TMPL = f"/home/il66977@ad.umbc.edu/Benchmarking_FSA/Fed_CoxPH/models/federated_data/federated/{data}/CoxPH_model_run_{{fold}}.pt"
-    elif model_name == "NNnPH": 
-        CKPT_TMPL = f"/home/il66977@ad.umbc.edu/Benchmarking_FSA/NNnPH/models/federated_data/federated/{data}/NNnPH_model_run_{{fold}}.pt"
-    else:
-        raise ValueError("model name did not match with our repository")
-         
-    return CKPT_TMPL
-  
-####################################### fold level configuration ####################################################################
-
-def get_data_model_directory_fold_level(model_name, data):
-    CKPT_TMPL = None 
+    cent_tmpl, fed_tmpl = None, None 
+    PROJECT_ROOT = Path(__file__).resolve().parent   
     if model_name in ["FedPDNN", "FedPLSTM", "FedPAttn"]: 
-        CKPT_TMPL = f"/home/il66977@ad.umbc.edu/Benchmarking_FSA/FedPseudo_Flare/models/federated_data/centralized/{data}/{data}/{model_name}_global_{{fold}}.pt"
+        cent_tmpl =  PROJECT_ROOT / "FedPseudo_Flare" / "models" / "federated_data" / "centralized" / "LeukSurv" / "LeukSurv" / "{MODEL_NAME}_global_{fold}.pt" 
+        fed_tmpl =  PROJECT_ROOT / "FedPseudo_Flare" / "models" / "federated_data" / "federated" / "LeukSurv" / "{MODEL_NAME}" / "LeukSurv" / "{MODEL_NAME}_global_{fold}.pt"  
     elif model_name == "AFT_Weibull": 
-        CKPT_TMPL = f"/home/il66977@ad.umbc.edu/Benchmarking_FSA/AFT_Weibull/models/federated_data/centralized/{data}/{model_name}_{{fold}}_{{client}}.pt"
+        cent_tmpl =  PROJECT_ROOT / "AFT_Weibull" / "models" / "federated_data" / "centralized" / "LeukSurv" / "{MODEL_NAME}_{fold}_0.pt" 
+        fed_tmpl =  PROJECT_ROOT / "AFT_Weibull" / "models" / "federated_data" / "federated" / "LeukSurv" / "{MODEL_NAME}_model_run_{fold}.tar" 
     elif model_name == "DeepHit": 
-        CKPT_TMPL = f"/home/il66977@ad.umbc.edu/Benchmarking_FSA/DeepHit/models/federated_data/centralized/{data}/{model_name}_{{fold}}_0.pt"
+        cent_tmpl =  PROJECT_ROOT / "DeepHit" / "models" / "federated_data" / "centralized" / "LeukSurv" / "{MODEL_NAME}_{fold}_0.pt" 
+        fed_tmpl =  PROJECT_ROOT / "DeepHit" / "models" / "federated_data" / "federated" / "LeukSurv" / "{MODEL_NAME}_model_run_{fold}.pt" 
     elif model_name == "LinearPH": 
-        CKPT_TMPL = f"/home/il66977@ad.umbc.edu/Benchmarking_FSA/LinearPH_NNph/models/federated_data/centralized/{data}/Centralized_{model_name}_{data}_{{fold}}_0.pt"
+        cent_tmpl =  PROJECT_ROOT / "LinearPH_NNph" / "models" / "federated_data" / "centralized" / "LeukSurv" / "Centralized_LinearPH_LeukSurv_{fold}_0.pt"  
+        fed_tmpl =  PROJECT_ROOT / "LinearPH_NNph" / "models" / "federated_data" / "federated" / "LeukSurv" / "LinearPH_model_run_{fold}.pt"  
     elif model_name == "NNPH": 
-        CKPT_TMPL = f"/home/il66977@ad.umbc.edu/Benchmarking_FSA/LinearPH_NNph/models/federated_data/centralized/{data}/Centralized_{model_name}_{data}_{{fold}}_0.pt"
+        cent_tmpl =  PROJECT_ROOT / "LinearPH_NNph" / "models" / "federated_data" / "centralized" / "LeukSurv" / "Centralized_NNph_LeukSurv_{fold}_0.pt"  
+        fed_tmpl =  PROJECT_ROOT / "LinearPH_NNph" / "models" / "federated_data" / "federated" / "LeukSurv" / "NNph_model_run_{fold}.pt"  
     elif model_name == "Fed_CoxPH": 
-        CKPT_TMPL = f"/home/il66977@ad.umbc.edu/Benchmarking_FSA/Fed_CoxPH/models/federated_data/centralized/{data}/Fed_CoxPH_{{fold}}_0.pt"
-    elif model_name == "NNnPH": 
-        CKPT_TMPL = f"/home/il66977@ad.umbc.edu/Benchmarking_FSA/NNnPH/models/federated_data/centralized/{data}/Centralized_NNnPH_{data}_{{fold}}_0.pt"
+        cent_tmpl =  PROJECT_ROOT / "Fed_CoxPH" / "models" / "federated_data" / "centralized" / "LeukSurv" / "Fed_CoxPH_{fold}_0.pt"  
+        fed_tmpl =  PROJECT_ROOT / "Fed_CoxPH" / "models" / "federated_data" / "federated" / "LeukSurv" / "CoxPH_model_run_{fold}.pt"  
     else:
-        raise ValueError("model name did not match with our repository")
-         
-    return CKPT_TMPL
+        raise ValueError( f"Unsupported model: {model_name}" ) 
+    return str(cent_tmpl), str(fed_tmpl) 
 
+####################################### Site-Level Configuration ###################################
+
+def get_data_model_directory_site_level(model_name, data):  
+    PROJECT_ROOT = Path(__file__).resolve().parent   
+    if model_name in ["FedPDNN", "FedPLSTM", "FedPAttn"]: 
+        ckpt_tmpl = PROJECT_ROOT / "FedPseudo_Flare" / "models" / "federated_data" / "federated" / data / model_name / data / f"{model_name}_global_{{fold}}.pt"  
+    elif model_name == "AFT_Weibull": 
+        ckpt_tmpl = PROJECT_ROOT / "AFT_Weibull" / "models" / "federated_data" / "federated" / data / f"{model_name}_model_run_{{fold}}.tar"  
+    elif model_name == "DeepHit": 
+        ckpt_tmpl = PROJECT_ROOT / "DeepHit" / "models" / "federated_data" / "federated" / data / f"{model_name}_model_run_{{fold}}.pt"  
+    elif model_name == "LinearPH": 
+        ckpt_tmpl = PROJECT_ROOT / "LinearPH_NNph" / "models" / "federated_data" / "federated" / data / "LinearPH_model_run_{fold}.pt"  
+    elif model_name == "NNPH": 
+        ckpt_tmpl =  PROJECT_ROOT / "LinearPH_NNph" / "models" / "federated_data" / "federated" / data / f"{model_name}_model_run_{{fold}}.pt"  
+    elif model_name == "Fed_CoxPH": 
+        ckpt_tmpl =  PROJECT_ROOT / "Fed_CoxPH" / "models" / "federated_data" / "federated" / data / "CoxPH_model_run_{fold}.pt"  
+    elif model_name == "NNnPH": 
+        ckpt_tmpl =   PROJECT_ROOT / "NNnPH" / "models" / "federated_data" / "federated" / data / f"{model_name}_model_run_{{fold}}.pt"  
+    else:
+        raise ValueError( f"Unsupported model: {model_name}") 
+    return str(ckpt_tmpl) 
+
+####################################### Fold-Level Configuration ###################################
+
+def get_data_model_directory_fold_level(model_name, data):  
+    PROJECT_ROOT = Path(__file__).resolve().parent   
+    if model_name in ["FedPDNN", "FedPLSTM", "FedPAttn"]: 
+        ckpt_tmpl = PROJECT_ROOT / "FedPseudo_Flare" / "models" / "federated_data" / "centralized" / data / data / f"{model_name}_global_{{fold}}.pt"  
+    elif model_name == "AFT_Weibull": 
+        ckpt_tmpl = PROJECT_ROOT / "AFT_Weibull" / "models" / "federated_data" / "centralized" / data / f"{model_name}_{{fold}}_{{client}}.pt"  
+    elif model_name == "DeepHit": 
+        ckpt_tmpl =  PROJECT_ROOT / "DeepHit" / "models" / "federated_data" / "centralized" / data / f"{model_name}_{{fold}}_0.pt" 
+    elif model_name == "LinearPH": 
+        ckpt_tmpl =  PROJECT_ROOT / "LinearPH_NNph" / "models" / "federated_data" / "centralized" / data / f"Centralized_{model_name}_{data}_{{fold}}_0.pt"  
+    elif model_name == "NNPH": 
+        ckpt_tmpl =  PROJECT_ROOT / "LinearPH_NNph" / "models" / "federated_data" / "centralized" / data / f"Centralized_{model_name}_{data}_{{fold}}_0.pt"  
+    elif model_name == "Fed_CoxPH": 
+        ckpt_tmpl =  PROJECT_ROOT / "Fed_CoxPH" / "models" / "federated_data" / "centralized" / data / "Fed_CoxPH_{fold}_0.pt"  
+    elif model_name == "NNnPH": 
+        ckpt_tmpl =  PROJECT_ROOT / "NNnPH" / "models" / "federated_data" / "centralized" / data / f"Centralized_NNnPH_{data}_{{fold}}_0.pt"  
+    else:
+        raise ValueError(f"Unsupported model: {model_name}") 
+    return str(ckpt_tmpl)  
 
 ############################################# Discretizer #########################################################################
 
@@ -99,19 +120,16 @@ class Discretiser():
     def fit(self, durations, events):
         durations = durations.astype(np.float64)
         if self._scheme == 'equidistant':
-            self.cuts = np.linspace(
-                0, durations.max(), self._cuts, dtype=np.float64)
+            self.cuts = np.linspace(0, durations.max(), self._cuts, dtype=np.float64)
         elif self._scheme == 'km':
             kmf = KaplanMeierFitter()
             kmf.fit(durations, events)
+            
             last_duration = durations.max()
-            percentiles = np.linspace(kmf.predict(
-                last_duration), kmf.predict(0), self._cuts, dtype=np.float64)
-            self.cuts = np.unique([kmf.percentile(p)
-                                  for p in percentiles][::-1])
+            percentiles = np.linspace(kmf.predict(last_duration), kmf.predict(0), self._cuts, dtype=np.float64)
+            self.cuts = np.unique([kmf.percentile(p) for p in percentiles][::-1])
         else:
-            ValueError
-        return self
+            raise ValueError(f"Unsupported scheme: {self._scheme}") 
 
     def transform(self, durations, events):
         # -1 so that idx_durations starts from 0
@@ -148,8 +166,7 @@ def data_transform(y, discretiser, fit_transform=True):
 
 def get_input_feature(args):
     if args.partition == "federated":
-        client_name = get_client_name_for_federated_datasets(
-            args.dataset, client_id=0)
+        client_name = get_client_name_for_federated_datasets( args.dataset, client_id=0)
         dataset_directory = f"{args.datadir}/{args.dataset}/{args.partition}/{client_name}/{args.run_id}/"
     else:
         dataset_directory = f"{args.datadir}/{args.dataset}/{args.partition}/0/{args.run_id}/"

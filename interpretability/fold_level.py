@@ -1,15 +1,29 @@
 import argparse
+import itertools
 
-from interpretability.utils import load_fold_csv, get_data_model_directory_fold_level, load_model_site, split_xy, pseudo_eval_times, create_model_logger
-from interpretability.config import TIME_COL, EVENT_COL,   SEED, B  
-from interpretability.score_single import global_importance
+import numpy as np
+import pandas as pd
+
+from scipy.stats import spearmanr, kendalltau
+from sklearn.model_selection import StratifiedShuffleSplit
+
+from pathlib import Path
 import torchtuples as tt
 from pycox.models import CoxPH
-import pandas as pd 
-import numpy as np 
-from sklearn.model_selection import StratifiedShuffleSplit
-import itertools, numpy as np, pandas as pd
-from scipy.stats import spearmanr, kendalltau   
+
+from interpretability.folds.config import TIME_COL, EVENT_COL, SEED, B
+from interpretability.folds.score import global_importance
+from interpretability.folds.utils import (
+    load_fold_csv,
+    get_data_model_directory_fold_level,
+    load_model_site,
+    split_xy,
+    pseudo_eval_times,
+    create_model_logger   
+)
+
+from config import MODELS 
+from utils import get_args, close_logger, get_folds
 
 
 def select_survival_background( train_df: pd.DataFrame, background_size: int = 200, random_state: int = 42, ) -> np.ndarray:
@@ -55,47 +69,41 @@ def select_survival_background( train_df: pd.DataFrame, background_size: int = 2
 
 def fold_importance(logger, data_dir, dataset, model_name, client, fold, feature_cols, times, in_features, out_features): 
     test_df  = load_fold_csv(data_dir, "test",  fold=fold)
-    train_df = load_fold_csv(data_dir, "train", fold=fold)
-    val_df = load_fold_csv(data_dir, "val", fold=fold)
+    train_df = load_fold_csv(data_dir, "train", fold=fold) 
     
-    logger.info( "Fold %d sizes: train=%d, validation=%d, test=%d", fold, len(train_df), len(val_df), len(test_df)) 
-     
+    logger.info( "Fold %d sizes: train=%d,  test=%d", fold, len(train_df), len(test_df))  
     background_positions = select_survival_background(train_df, background_size = 100, random_state= 42)
-    sampled_train_Df = train_df.iloc[background_positions]
-    logger.info("Fold %d background size: %d", fold, len(sampled_train_Df))
+    
+    sampled_train_df = train_df.iloc[background_positions]
+    logger.info("Fold %d background size: %d", fold, len(sampled_train_df))
    
     # global CKPT_TMPL  
-    CKPT_Path = get_data_model_directory_fold_level(model_name, dataset, fold, client=client)  
-    logger.info( "Fold %d checkpoint: %s", fold, CKPT_Path)
+    ckpt_path = get_data_model_directory_fold_level(model_name, dataset, fold, client=client)  
+    logger.info( "Fold %d checkpoint: %s", fold, ckpt_path)
      
     X_test,  y_test_sksurv,  _ = split_xy(test_df, feature_cols)
-    X_train, y_train_sksurv, y_train_pycox = split_xy(sampled_train_Df, feature_cols) 
+    X_train, y_train_sksurv, y_train_pycox = split_xy(sampled_train_df, feature_cols) 
     
-    model, discretiser = load_model_site(model_name, CKPT_Path, in_features=in_features, out_features=out_features)
-    if model_name == "Fed_CoxPH":      
-        opt = tt.optim.Adam(lr=1e-3, weight_decay=5e-5)
-        net = CoxPH(model, opt)
+    model, discretiser = load_model_site(model_name, ckpt_path, in_features=in_features, out_features=out_features)
+    
+    net = model 
+    if model_name == "Fed_CoxPH":
+        opt = tt.optim.Adam(lr=1e-3, weight_decay=5e-5) 
+        net = CoxPH(model, opt) 
         net.compute_baseline_hazards(X_train.to_numpy(dtype="float32"), y_train_pycox)
-        print("CoxPH object is laoded")  
-    elif model_name == "DeepHit":
-        net = model 
-    else: 
-        net = model
-        # net.eval() 
  
-    logger.info( "Starting SurvSHAP: fold=%d, model=%s, test=%d", fold, model_name, len(X_test)) 
-    
-    print("="*60)
-    print(type(net))
-    print(X_test.iloc[:3])
-    print(f"checking discretiser: {discretiser is None}") 
-    
+    logger.info( "Starting SurvSHAP: fold=%d, model=%s, test=%d", fold, model_name, len(X_test))   
     important_score = global_importance(fold, model_name, net, X_test, y_test_sksurv, background=X_train, y_background=y_train_sksurv, n_explain=None, times=times, discretizer=discretiser, B=B, method="sampling", random_state=SEED, features=feature_cols, chunk_size=1500, num_workers=4, devices=[ "cuda:0", "cuda:1", "cuda:2", "cuda:3"])
     logger.info("SurvSHAP completed for fold %d", fold)
-    return  important_score
+    return  important_score  
+
+def get_centralized_data_dir(dataset):
+    PROJECT_ROOT = Path(__file__).resolve().parents[1] 
+    PROCESSED_DATA_DIR =  PROJECT_ROOT / "datasets" / "processed_data" / "federated_data"
+    return PROCESSED_DATA_DIR / dataset  / "centralized" 
 
 def calculate_importance(dataset, model_name, folds):  
-    data_dir   = f"/home/il66977@ad.umbc.edu/Benchmarking_FSA/datasets/processed_data/federated_data/{dataset}/centralized"
+    data_dir = get_centralized_data_dir(dataset) 
     print(data_dir)   
     
     # fold loop
@@ -116,11 +124,12 @@ def calculate_importance(dataset, model_name, folds):
         logger.info("=" * 70)
         logger.info("Starting fold %d", fold)
         
-        all_train_val_times = []
-        all_train_val_times.extend(load_fold_csv(data_dir, "train", fold)[TIME_COL].to_numpy())
-        all_train_val_times.extend(load_fold_csv(data_dir, "val", fold)[TIME_COL].to_numpy())  
-        
-        times = pseudo_eval_times(all_train_val_times, pseudo_interval=10)
+        train_times = load_fold_csv( data_dir, "train", fold )[TIME_COL].to_numpy() 
+        val_times = load_fold_csv( data_dir, "val", fold )[TIME_COL].to_numpy()
+
+        all_train_val_times = np.concatenate([ train_times, val_times]) 
+        times = pseudo_eval_times(all_train_val_times, pseudo_interval=10)  
+         
         important_score = fold_importance( logger, data_dir, dataset, model_name, client=0, fold=fold, feature_cols=feature_cols, times=times,  in_features=len(feature_cols),  out_features=out_features)
         imps[fold] =  important_score.reindex(feature_cols)  
         
@@ -171,67 +180,17 @@ def stability_computation(imps, feature_cols, model_name, logger):
     logger.info(f"[{model_name}] stability  weighted={model_stability_weighted:.3f}  unweighted={model_stability_mean:.3f}")
     
     print(sdf)
-    logger.info( "Feature stability:\n%s", sdf.to_string())
-
-
-def get_args(): 
-    parser = argparse.ArgumentParser( description="Run site-level interpretability analysis.")
-    parser.add_argument("-d", "--dataset-group", type=int, required=True, choices=[1, 2, 3, 4, 5], help="Dataset group to run:")
-
-    args = parser.parse_args()
-    d = args.dataset_group
-    return d 
-  
-if __name__ == "__main__":
-    dataset = "Pbc3"  
-    d = get_args()  
-        
-    if d == 1: 
-        dataset_name = "scania"
-    elif d == 2: 
-        dataset_name = "uis"
-    elif d == 3: 
-        dataset_name = "d.oropha.rec" 
-    elif d == 4:
-        dataset_name = "Dialysis"
-    else: 
-        dataset_name = "Aids2"
+    logger.info( "Feature stability:\n%s", sdf.to_string()) 
+            
+if __name__ == "__main__": 
+    args = get_args( "Run fold-level interpretability analysis.")
+    dataset = args.dataset
     
-    data_dictionary = {
-      "seer": list(range(5)), 
-      "Pbc3": list(range(3)), 
-      "LeukSurv":list(range(3)),
-      "cgd": list(range(3)),
-      "seer": list(range(5)), 
-      "Pbc3":  list(range(3)),
-      "LeukSurv": list(range(3)),   
-      "cgd":  list(range(3)), 
-      "scania": list(range(5)),  
-      "uis":  list(range(5)),  
-      "d.oropha.rec": list(range(3)),  
-      "Dialysis": list(range(3)),   
-      "Aids2": list(range(5)),   
-    }
-    
-    models_name = ["FedPAttn", "FedPDNN", "FedPLSTM", "AFT_Weibull", "Fed_CoxPH",  "DeepPseudo", "LinearPH", "NNPH", "NNnPH", "DeepHit"]
-    # if n == 1: 
-    #     models_name = ["FedPAttn", "FedPDNN", "FedPLSTM"]
-    # elif n == 2: 
-    #     models_name = ["LinearPH", "NNnPH"]
-        
-    # elif n == 2: 
-    #     models_name = ["AFT_Weibull", "Fed_CoxPH", "DeepPseudo", "DeepHit"]
-    # else:  
-    #     models_name = ["LinearPH", "NNPH", "NNnPH"]
-         
-    for model_name in models_name:
-        folds = data_dictionary[dataset] 
-        imps, feature_cols, logger = calculate_importance(dataset, model_name, folds) 
+    folds = get_folds(dataset) 
+    for model_name in MODELS: 
+        imps, feature_cols, logger = calculate_importance( dataset, model_name, folds) 
         calculate_spearman_correlation(imps, feature_cols, folds, logger) 
-        stability_computation(imps, feature_cols, model_name, logger)
 
-        logger.info("Experiment completed successfully") 
-        for handler in logger.handlers[:]:
-            handler.flush()
-            handler.close()
-            logger.removeHandler(handler)
+        stability_computation(imps, feature_cols, model_name, logger)  
+        logger.info("Experiment completed successfully")  
+        close_logger(logger)
