@@ -1,17 +1,15 @@
 import argparse
 
-from fold.utils import load_fold_csv, get_data_model_directory_fold_level, Discretiser, load_model_site, split_xy, pseudo_eval_times, create_model_logger
-from fold.config import TIME_COL, EVENT_COL,   SEED, B,  OUT_FEATURES 
-from fold.score import global_importance
+from interpretability.utils import load_fold_csv, get_data_model_directory_fold_level, load_model_site, split_xy, pseudo_eval_times, create_model_logger
+from interpretability.config import TIME_COL, EVENT_COL,   SEED, B  
+from interpretability.score_single import global_importance
 import torchtuples as tt
 from pycox.models import CoxPH
 import pandas as pd 
 import numpy as np 
 from sklearn.model_selection import StratifiedShuffleSplit
-import itertools, numpy as np, pandas as pd, torch
-from scipy.stats import spearmanr, kendalltau  
-import logging
-import os
+import itertools, numpy as np, pandas as pd
+from scipy.stats import spearmanr, kendalltau   
 
 
 def select_survival_background( train_df: pd.DataFrame, background_size: int = 200, random_state: int = 42, ) -> np.ndarray:

@@ -56,7 +56,19 @@ pip install -r requirements.txt
 conda create -n FSA_Bench python=3.10
 conda activate FSA_Bench
 pip install -r requirements.txt
-```
+``` 
+
+## Requirements
+
+The following Python packages are required for running our experiments. 
+
+```text
+jupyter==1.0.0
+pycox==0.2.3
+torch==2.0.1
+scikit-learn==1.2.2
+pandas==1.3.5
+numpy==1.24.3 
 
 ##  Running Experiments
 
@@ -194,32 +206,6 @@ runs the fold-level interpretability script using dataset ID `5`.
 
 The CPU core assignments shown above are examples and can be modified based on the available computational resources.
 
-## Requirements
-
-```text
-jupyter==1.0.0
-pycox==0.2.3
-torch==2.0.1
-scikit-learn==1.2.2
-pandas==1.3.5
-numpy==1.24.3
-```
-
-## How to Cite
-
-If you use FSA-Bench, its code, or datasets in your research, please cite our paper:
-
-```bibtex
-@inproceedings{ahmed2026fsa,
-  title={FSA-Bench: Benchmarking Federated Survival Models},
-  author={Ahmed, Sultan and Purushotham, Sanjay},
-  booktitle={Machine Learning for Healthcare Conference},
-  pages={30--54},
-  year={2026},
-  organization={PMLR}
-
-}
-``` 
  
 ## License
 

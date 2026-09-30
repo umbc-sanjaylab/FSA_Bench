@@ -282,8 +282,7 @@ def train_selected_clients(models, selected_clients, data, model_spec, eval_time
     """
 
     for client_id in selected_clients: 
-        model = models[client_id]
-
+        model = models[client_id] 
         if model is None:
             continue
 
