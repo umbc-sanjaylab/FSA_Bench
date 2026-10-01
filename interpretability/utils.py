@@ -1,4 +1,3 @@
-from pathlib import Path
 
 import numpy as np 
 import pandas as pd 
@@ -8,7 +7,7 @@ from lifelines import KaplanMeierFitter
 
 import os, argparse, warnings  
 from pathlib import Path 
-from .config import DATASET_FOLDS
+from .config import DATASET_FOLDS, MODELS
 
 ####################################### Arguments Method ####################################################################
 
@@ -33,77 +32,52 @@ def close_logger(logger):
 
 ####################################### partition wise configuration ####################################################################
 
-def get_data_model_directory_partition_wise(model_name):
-    cent_tmpl, fed_tmpl = None, None 
-    PROJECT_ROOT = Path(__file__).resolve().parent   
-    if model_name in ["FedPDNN", "FedPLSTM", "FedPAttn"]: 
-        cent_tmpl =  PROJECT_ROOT / "FedPseudo_Flare" / "models" / "federated_data" / "centralized" / "LeukSurv" / "LeukSurv" / "{MODEL_NAME}_global_{fold}.pt" 
-        fed_tmpl =  PROJECT_ROOT / "FedPseudo_Flare" / "models" / "federated_data" / "federated" / "LeukSurv" / "{MODEL_NAME}" / "LeukSurv" / "{MODEL_NAME}_global_{fold}.pt"  
-    elif model_name == "AFT_Weibull": 
-        cent_tmpl =  PROJECT_ROOT / "AFT_Weibull" / "models" / "federated_data" / "centralized" / "LeukSurv" / "{MODEL_NAME}_{fold}_0.pt" 
-        fed_tmpl =  PROJECT_ROOT / "AFT_Weibull" / "models" / "federated_data" / "federated" / "LeukSurv" / "{MODEL_NAME}_model_run_{fold}.tar" 
-    elif model_name == "DeepHit": 
-        cent_tmpl =  PROJECT_ROOT / "DeepHit" / "models" / "federated_data" / "centralized" / "LeukSurv" / "{MODEL_NAME}_{fold}_0.pt" 
-        fed_tmpl =  PROJECT_ROOT / "DeepHit" / "models" / "federated_data" / "federated" / "LeukSurv" / "{MODEL_NAME}_model_run_{fold}.pt" 
-    elif model_name == "LinearPH": 
-        cent_tmpl =  PROJECT_ROOT / "LinearPH_NNph" / "models" / "federated_data" / "centralized" / "LeukSurv" / "Centralized_LinearPH_LeukSurv_{fold}_0.pt"  
-        fed_tmpl =  PROJECT_ROOT / "LinearPH_NNph" / "models" / "federated_data" / "federated" / "LeukSurv" / "LinearPH_model_run_{fold}.pt"  
-    elif model_name == "NNPH": 
-        cent_tmpl =  PROJECT_ROOT / "LinearPH_NNph" / "models" / "federated_data" / "centralized" / "LeukSurv" / "Centralized_NNph_LeukSurv_{fold}_0.pt"  
-        fed_tmpl =  PROJECT_ROOT / "LinearPH_NNph" / "models" / "federated_data" / "federated" / "LeukSurv" / "NNph_model_run_{fold}.pt"  
-    elif model_name == "Fed_CoxPH": 
-        cent_tmpl =  PROJECT_ROOT / "Fed_CoxPH" / "models" / "federated_data" / "centralized" / "LeukSurv" / "Fed_CoxPH_{fold}_0.pt"  
-        fed_tmpl =  PROJECT_ROOT / "Fed_CoxPH" / "models" / "federated_data" / "federated" / "LeukSurv" / "CoxPH_model_run_{fold}.pt"  
-    else:
-        raise ValueError( f"Unsupported model: {model_name}" ) 
+def get_data_model_directory_partition_wise(model, data, fold, client): 
+    PROJECT_ROOT = Path(__file__).resolve().parent  
+    model_name = model 
+    
+    if model  not in MODELS:
+        raise ValueError(f"Unsupported model: {model_name}") 
+    
+    if model in ["FedPDNN", "FedPLSTM", "FedPAttn"]: 
+        model_name = "FedPseudo_Flare"   
+    
+    cent_tmpl=  PROJECT_ROOT / model_name / "models" /  "CL" / data / f"{model_name}_{fold}_global.pt" 
+    fed_tmpl =  PROJECT_ROOT / model_name / "models" /  "FL" / data / f"{model_name}_{fold}_{client}.pt" 
+    
     return str(cent_tmpl), str(fed_tmpl) 
 
 ####################################### Site-Level Configuration ###################################
 
-def get_data_model_directory_site_level(model_name, data):  
-    PROJECT_ROOT = Path(__file__).resolve().parent   
-    if model_name in ["FedPDNN", "FedPLSTM", "FedPAttn"]: 
-        ckpt_tmpl = PROJECT_ROOT / "FedPseudo_Flare" / "models" / "federated_data" / "federated" / data / model_name / data / f"{model_name}_global_{{fold}}.pt"  
-    elif model_name == "AFT_Weibull": 
-        ckpt_tmpl = PROJECT_ROOT / "AFT_Weibull" / "models" / "federated_data" / "federated" / data / f"{model_name}_model_run_{{fold}}.tar"  
-    elif model_name == "DeepHit": 
-        ckpt_tmpl = PROJECT_ROOT / "DeepHit" / "models" / "federated_data" / "federated" / data / f"{model_name}_model_run_{{fold}}.pt"  
-    elif model_name == "LinearPH": 
-        ckpt_tmpl = PROJECT_ROOT / "LinearPH_NNph" / "models" / "federated_data" / "federated" / data / "LinearPH_model_run_{fold}.pt"  
-    elif model_name == "NNPH": 
-        ckpt_tmpl =  PROJECT_ROOT / "LinearPH_NNph" / "models" / "federated_data" / "federated" / data / f"{model_name}_model_run_{{fold}}.pt"  
-    elif model_name == "Fed_CoxPH": 
-        ckpt_tmpl =  PROJECT_ROOT / "Fed_CoxPH" / "models" / "federated_data" / "federated" / data / "CoxPH_model_run_{fold}.pt"  
-    elif model_name == "NNnPH": 
-        ckpt_tmpl =   PROJECT_ROOT / "NNnPH" / "models" / "federated_data" / "federated" / data / f"{model_name}_model_run_{{fold}}.pt"  
-    else:
-        raise ValueError( f"Unsupported model: {model_name}") 
-    return str(ckpt_tmpl) 
+def get_data_model_directory_site_level(model, data, fold, client):    
+    PROJECT_ROOT = Path(__file__).resolve().parent  
+    model_name = model 
+    
+    if model  not in MODELS:
+        raise ValueError(f"Unsupported model: {model_name}") 
+    
+    if model in ["FedPDNN", "FedPLSTM", "FedPAttn"]: 
+        model_name = "FedPseudo_Flare"  
+    
+    ckpt_tmpl =   PROJECT_ROOT / model_name / "models" /  "FL" / data / f"{model_name}_{fold}_{client}.pt" 
+    return str(ckpt_tmpl)  
 
 ####################################### Fold-Level Configuration ###################################
 
-def get_data_model_directory_fold_level(model_name, data):  
+def get_data_model_directory_fold_level(model, data, fold):  
     PROJECT_ROOT = Path(__file__).resolve().parent   
-    if model_name in ["FedPDNN", "FedPLSTM", "FedPAttn"]: 
-        ckpt_tmpl = PROJECT_ROOT / "FedPseudo_Flare" / "models" / "federated_data" / "centralized" / data / data / f"{model_name}_global_{{fold}}.pt"  
-    elif model_name == "AFT_Weibull": 
-        ckpt_tmpl = PROJECT_ROOT / "AFT_Weibull" / "models" / "federated_data" / "centralized" / data / f"{model_name}_{{fold}}_{{client}}.pt"  
-    elif model_name == "DeepHit": 
-        ckpt_tmpl =  PROJECT_ROOT / "DeepHit" / "models" / "federated_data" / "centralized" / data / f"{model_name}_{{fold}}_0.pt" 
-    elif model_name == "LinearPH": 
-        ckpt_tmpl =  PROJECT_ROOT / "LinearPH_NNph" / "models" / "federated_data" / "centralized" / data / f"Centralized_{model_name}_{data}_{{fold}}_0.pt"  
-    elif model_name == "NNPH": 
-        ckpt_tmpl =  PROJECT_ROOT / "LinearPH_NNph" / "models" / "federated_data" / "centralized" / data / f"Centralized_{model_name}_{data}_{{fold}}_0.pt"  
-    elif model_name == "Fed_CoxPH": 
-        ckpt_tmpl =  PROJECT_ROOT / "Fed_CoxPH" / "models" / "federated_data" / "centralized" / data / "Fed_CoxPH_{fold}_0.pt"  
-    elif model_name == "NNnPH": 
-        ckpt_tmpl =  PROJECT_ROOT / "NNnPH" / "models" / "federated_data" / "centralized" / data / f"Centralized_NNnPH_{data}_{{fold}}_0.pt"  
-    else:
-        raise ValueError(f"Unsupported model: {model_name}") 
+    model_name = model
+    
+    if model_name  not in MODELS:
+        raise ValueError(f"Unsupported model: {model_name}")
+    
+    if model in ["FedPDNN", "FedPLSTM", "FedPAttn"]: 
+        model_name = "FedPseudo_Flare"  
+    
+    ckpt_tmpl =  PROJECT_ROOT / model_name / "models" /  "CL" / data / f"{model_name}_{fold}_global.pt" 
     return str(ckpt_tmpl)  
 
-############################################# Discretizer #########################################################################
-
+############################################# Discretizer ######################################################################### 
 
 class Discretiser():
     """
@@ -268,18 +242,7 @@ def global_importance1(fold, model, X, y, background=None,  y_background=None, n
             results = list(executor.map(process_chunk, chunks))
         return pd.concat(results)
     
-    return compute_shap_parallel(explain_X, chunk_size=100, num_workers=8) 
-    
-    # import pickle 
-    # with open(f"pickles/exp3_survshap_global_cph_{fold}.pkl", "wb") as f:
-    #     pickle.dump(ms, f)
-    
-    # imp = (ms.result.set_index("variable_name")["aggregated_change"].abs().sort_values(ascending=False))
-    # print(imp)
-    
-    # imp.name = "importance"
-    # return imp
-
+    return compute_shap_parallel(explain_X, chunk_size=100, num_workers=8)   
 
 def adapter_sksurv(times):
     """For scikit-survival models. Re-grids onto a shared time grid."""
