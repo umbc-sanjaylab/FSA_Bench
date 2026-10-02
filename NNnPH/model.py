@@ -1,74 +1,92 @@
-import torch
 from torch import nn
-torch.cuda.set_per_process_memory_fraction(0.15, 0)
+import torch
 
 
-def init_nets(input_size, dropout_p, n_parties, args, discretiser):
+############################# NNnPH Model Initializer #####################################
 
-    nets = {net_i: None for net_i in range(n_parties)}
-
-    for net_i in range(n_parties):
-        hidden_sizes = [32, 32]
-        batch_norm = True
-
+def init_nets(input_size, n_parties, args): 
+    nets = {net_i: None for net_i in range(n_parties)} 
+    for net_i in range(n_parties):  
         if args.model == "NNnPH":
-            net = MLP(dim_in=input_size, num_nodes=hidden_sizes, dim_out=len(discretiser.cuts), batch_norm=batch_norm, dropout=dropout_p)
+            net = NNnPHNetwork( dim_in=input_size, hidden_sizes=[32, 32], dim_out=args.num_duration, batch_norm=True, dropout=args.dropout)
         else:
             print("not supported yet")
             exit(1)
-        nets[net_i] = net
-
-    model_meta_data = []
-    layer_type = []
-    
-    for (k, v) in nets[0].state_dict().items():
-        model_meta_data.append(v.shape)
-        layer_type.append(k)
-
-    return nets, model_meta_data, layer_type 
+        nets[net_i] = net 
+    return nets 
 
 
-class DenseBlock(nn.Module):
-    def __init__(self, dim_in, dim_out, bias=True, batch_norm=True, dropout=0, activation=nn.ReLU,
-                 w_init_=lambda w: nn.init.kaiming_normal_(w, nonlinearity='relu')):
+############################# NNnPH Model Architecture ########################################
+
+class NNnPHNetwork(nn.Module):
+    def __init__( self, dim_in, hidden_sizes, dim_out, batch_norm=True, dropout=0.0):
         super().__init__()
-        self.linear = nn.Linear(dim_in, dim_out, bias)
-        # fill in self.linear.weight.data with kaiming normal
-        if w_init_:
-            w_init_(self.linear.weight.data)
-        self.activation = activation()
 
-        self.batch_norm = nn.LayerNorm(dim_out) if batch_norm else None
-        # self.batch_norm = nn.BatchNorm1d(dim_out) if batch_norm else None
-        self.dropout = nn.Dropout(dropout) if dropout else None
+        layers = []
+        prev = dim_in
 
-    def forward(self, input):
-        input = self.activation(self.linear(input))
-        if self.batch_norm:
-            input = self.batch_norm(input)
-        if self.dropout:
-            input = self.dropout(input)
-        return input
+        for hidden_size in hidden_sizes: 
+            linear = nn.Linear( prev, hidden_size, bias=True) 
+            nn.init.kaiming_normal_( linear.weight, nonlinearity="relu")
 
-# output is unconstrained if output_activation not sigmoid
+            layers.append(linear)
+            layers.append(nn.ReLU())
 
+            if batch_norm:
+                layers.append( nn.BatchNorm1d(hidden_size))
 
-class MLP(nn.Module):
-    def __init__(self, dim_in, num_nodes, dim_out, batch_norm=True, dropout=None, activation=nn.ReLU,
-                 output_activation=None, output_bias=True,
-                 w_init_=lambda w: nn.init.kaiming_normal_(w, nonlinearity='relu')):
-        super().__init__()
-        num_nodes = [dim_in] + num_nodes
-        net = []
-        for d_in, d_out in zip(num_nodes[:-1], num_nodes[1:]):
-            net.append(DenseBlock(d_in, d_out, bias=True, batch_norm=batch_norm,
-                                  dropout=dropout, activation=activation, w_init_=w_init_))
-        # print(num_nodes[-1], dim_out, output_bias)
-        # print(type(num_nodes[-1]), type(dim_out))
-        net.append(nn.Linear(num_nodes[-1], dim_out, output_bias))
-        if output_activation:
-            net.append(output_activation)
-        self.net = nn.Sequential(*net)
+            if dropout and dropout > 0:
+                layers.append(nn.Dropout(dropout))
 
-    def forward(self, input):
-        return self.net(input)
+            prev = hidden_size
+
+        layers.append(nn.Linear( prev, dim_out, bias=True)) 
+        self.net = nn.Sequential(*layers)
+
+    def forward(self, x):
+        return self.net(x) 
+      
+      
+# #################################### FedPseudo################################################# 
+
+def train(dataloader, model, loss_fn, optimizer, device1: str = 'cpu'):
+    device = device1
+    # print(f"device is {device}")
+
+    # Total number of observation divided by batch size
+    num_batches = len(dataloader)
+    model.to(device)
+    model.train()
+
+    total_loss = 0
+    for batch, (X, time, status) in enumerate(dataloader):
+        X, time, status = X.to(device), time.to(
+            device), status.to(device)  # x is covariates
+        # Compute prediction error
+        pred = model(X)
+        loss = loss_fn(pred, time, status)
+
+        # Backpropagation
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+        total_loss += loss.item()
+    total_loss /= num_batches
+    return total_loss
+ 
+############################# Evaluate the model ########################################
+
+def evaluate(dataloader, model, loss_fn, device: str = 'cpu'):
+
+    num_batches = len(dataloader)
+    model.eval()
+    test_loss = 0
+    with torch.no_grad():
+        for X, time, status in dataloader:
+            X, time, status = X.to(device), time.to(
+                device), status.to(device)  # x is covariates
+            pred = model(X)
+            test_loss += loss_fn(pred, time, status).item()
+
+    test_loss /= num_batches
+    return test_loss

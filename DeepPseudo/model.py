@@ -1,11 +1,5 @@
-import torch, gc
-gc.collect()
-torch.cuda.empty_cache()
-
-import torch.nn as nn 
-from typing import Callable,  Union 
-ModuleType = Union[str, Callable[..., nn.Module]]
-_INTERNAL_ERROR_MESSAGE = 'Internal error. Please, open an issue.'  
+import torch 
+import torch.nn as nn    
 
 ############################# DeepPseudo#####################################    
 class DeepPseudo(nn.Module):
@@ -28,12 +22,9 @@ class DeepPseudo(nn.Module):
 
 ################################################### Function For initializing networks ##################################################
 
-def init_nets(input_size, dropout_p, n_parties,  args):
-
-    nets = {net_i: None for net_i in range(n_parties)}
-
-    for net_i in range(n_parties):
-
+def init_nets(input_size, dropout_p, n_parties,  args): 
+    nets = {net_i: None for net_i in range(n_parties)} 
+    for net_i in range(n_parties): 
         output_size = args.pseudo_perc_interval
         num_event= 1 
             
@@ -43,7 +34,6 @@ def init_nets(input_size, dropout_p, n_parties,  args):
             print("not supported yet")
             exit(1)
         nets[net_i] = net 
-
     return nets  
 
 

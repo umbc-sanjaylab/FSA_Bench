@@ -1,133 +1,55 @@
-import numpy as np
-import json
-import torch
-import argparse
-import os
-from math import *
-from sklearn.preprocessing import StandardScaler
+import numpy as np 
+import torch 
+import os 
 from model import *
 from local_clients import *
-from utils import *
-import builtins
-import time
-from local_clients import local_train_net, train_net_all
-from sklearn.model_selection import StratifiedKFold
-import os
-import psutil
-from datetime import datetime 
-torch.cuda.set_per_process_memory_fraction(0.15, 0)
+from utils import * 
+from local_clients import local_train_net, train_net_all   
+from server_utils import get_args, compute_eval_time  
+from datasets.data_processing import prepare_survival_data,  compute_eval_times 
+from model import init_nets  
+from copy import deepcopy
 
-proc = psutil.Process(os.getpid())
+def train_centralized(model, data, eval_times, args):   
+      model = init_nets(data.centralized.train.X.shape[1], 1, args)[0]  
+      prepared_data = prepare_survival_data(args) 
+      
+      eval_times = compute_eval_times( prepared_data, interval=args.pseudo_perc_interval) 
+      results = train_centralized(model=model, data=prepared_data.centralized, eval_times=eval_times, args=args)
+      
+      test_cindex, test_brier, test_nbll, test_p_value, test_weighted_MAE_PO = results
+      print('>> All in Test Cindex: {}'.format(test_cindex))
+      print('>> All in Test Brier: {}'.format(test_brier))
+      print('>> All in Test NBLL: {}'.format(test_nbll))
+      print('>> All in Test D-Calibration: {}'.format(test_p_value))
+      print('>> All in Test Weighted MAE PO: {}'.format(test_weighted_MAE_PO))
 
-
-def get_args():
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--model', type=str, default='CoxPH', help='neural network used in training')
-    parser.add_argument('--dataset', type=str, default='metabric', help='dataset used for training')
-    parser.add_argument( '--net_config', type=lambda x: list(map(int, x.split(', '))))
-    parser.add_argument('--partition', type=str, default='iid', help='the data partitioning strategy')
-    parser.add_argument('--Pseudo_value', type=str, default='non-DP', help='the pseudo value calculation strategy')
-    parser.add_argument('--batch_size', type=int, default=64, help='input batch size for training (default: 64)')
-    parser.add_argument('--lr', type=float, default=0.01, help='learning rate (default: 0.01)')
-    parser.add_argument('--epochs', type=int, default=50, help='number of local epochs')
-    parser.add_argument('--n_parties', type=int, default=10, help='number of workers in a distributed cluster')
-    parser.add_argument('--alg', type=str, default='fedavg', help='communication strategy: fedavg/fedprox')
-    parser.add_argument('--comm_round', type=int, default=50, help='number of maximum communication round')
-    parser.add_argument('--patience', type=int, default=20, help='number of patience')
-    parser.add_argument('--is_same_initial', type=int, default=1, help='Whether initial all the models with the same parameters in fedavg')
-    parser.add_argument('--init_seed', type=int, default=0, help="Random seed")
-    parser.add_argument('--run_id', type=int, default=0, help="fold number of 5-fold cross validation")
-    parser.add_argument('--dropout_p', type=float, required=False, default=0.0, help="Dropout probability. Default=0.0")
-    parser.add_argument('--datadir', type=str, required=False, default="/home/local/AD/il66977/benchmark_FSA/Fed_CoxPH/data/", help="Data directory")
-    parser.add_argument('--reg', type=float, default=1e-5, help="L2 regularization strength")
-    parser.add_argument('--logdir', type=str, required=False, default="/home/local/AD/il66977/benchmark_FSA/Fed_CoxPH/logs/", help='Log directory path')
-    parser.add_argument('--modeldir', type=str, required=False, default="/home/benchmark_FSA/Fed_CoxPH/models/", help='Model directory path')
-    parser.add_argument('--device', type=str, default='cuda:0', help='The device to run the program')
-    parser.add_argument('--log_file_name', type=str, default=None, help='The log file name')
-    parser.add_argument('--optimizer', type=str, default='adam', help='the optimizer')
-    parser.add_argument('--mu', type=float, default=1, help='the mu parameter for fedprox')
-    parser.add_argument('--rho', type=float, default=0, help='Parameter controlling the momentum SGD')
-    parser.add_argument('--sample', type=float, default=1.0, help='Sample ratio for each communication round')
-    parser.add_argument('--pseudo_perc_interval', type=int, default=10,  help='Interval for pseudo values calculation')
-    parser.add_argument('--epsilon', type=float, default=5.0, help='epsilon')
-
-    args = parser.parse_args()
-    return args
-
-
-
-def init_nets(input_size, dropout_p, n_parties, args, discretiser):
-
-    nets = {net_i: None for net_i in range(n_parties)}
-
-    for net_i in range(n_parties):
-        hidden_sizes = [32, 32]
-        batch_norm = True
-
-        if args.model == "NNnPH":
-            net = MLP(dim_in=input_size, num_nodes=hidden_sizes, dim_out=len(discretiser.cuts), batch_norm=batch_norm, dropout=dropout_p)
-        else:
-            print("not supported yet")
-            exit(1)
-        nets[net_i] = net
-
-    model_meta_data = []
-    layer_type = []
-    for (k, v) in nets[0].state_dict().items():
-        model_meta_data.append(v.shape)
-        layer_type.append(k)
-
-    return nets, model_meta_data, layer_type
-
-
-def mem_mb():
-    return proc.memory_info().rss / (1024**2)
-
-
-def get_fold_index(party_id, X_data, status_data, args):
-    fold_indices = []
-    skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=args.init_seed + int(party_id))
-
-    dummy_X = np.zeros((len(status_data), 1))  # optional: can also use X_data
-    for _, test_idx in skf.split(X_data, status_data):
-        fold_indices.append(test_idx)
-
-    # Rolling cross validation
-    num_folds = 5
-    val_fold = (3 + args.run_id) % num_folds
-    test_fold = (4 + args.run_id) % num_folds
-    train_folds = [i for i in range(
-        num_folds) if i not in (val_fold, test_fold)]
-
-    train_idx = np.concatenate([fold_indices[i] for i in train_folds])
-    val_idx = fold_indices[val_fold]
-    test_idx = fold_indices[test_fold]
-
-    return train_idx, val_idx, test_idx
-
-
-def compute_eval_time(args):
-    local_unique_times = []
-
-    for client_id in range(args.n_parties):
-        train_df, val_df, _, _, _ = get_local_dataset(args.dataset, args.partition, client_id, args.run_id, args)
-        train_time, _ = train_df["time"], train_df["event"]
-
-        val_time, _ = val_df["time"], val_df["event"]
-        local_unique_times.append(
-            np.unique(np.concatenate([train_time, val_time])))
-
-    glob_unique_time = np.unique(np.concatenate(local_unique_times))
-    pseudo_evaltime = np.percentile(glob_unique_time, np.arange(
-        args.pseudo_perc_interval, 99, args.pseudo_perc_interval))
-    return pseudo_evaltime
+def run_federated( model, clients, eval_times, args):  
+       pass 
+     
 
 ######################################################## Global Server Training ###########################################################  
-if __name__ == '__main__':
-    args = get_args()
+if __name__ == '__main__': 
+    args = get_args() 
     mkdirs(args.logdir)
-    mkdirs(args.modeldir)
+    mkdirs(args.modeldir) 
+        
+    data = prepare_survival_data(args) 
+    eval_times = compute_eval_times(data, interval=args.pseudo_perc_interval)
 
+    input_size = len(data.feature_names) 
+    model = init_nets(input_size, n_parties=args.n_parties, args=args)
+
+    if args.setting not in ["CL", "FL"]: 
+        raise ValueError(f"Unsupported setting: {args.setting}")
+      
+    if args.setting == "CL": 
+        train_centralized( model=model, data=data.centralized, eval_times=eval_times, args=args ) 
+    else:  
+        run_federated( model=model, clients=data.clients, eval_times=eval_times, args=args) 
+
+
+def another(): 
     print('dataset:', args.dataset)
     start = time.time()
     start_counter = time.perf_counter()
@@ -210,13 +132,7 @@ if __name__ == '__main__':
         X_val_loc.columns = feature_list
 
         X_test_loc = pd.DataFrame(X_test)
-        X_test_loc.columns = feature_list
-
-        # if std_list:
-        #     scaler = StandardScaler().fit(X_train_loc.loc[:, std_list])
-        #     X_train_loc.loc[:, std_list] = scaler.transform(X_train_loc.loc[:, std_list])
-        #     X_val_loc.loc[:, std_list] = scaler.transform(X_val_loc.loc[:, std_list])
-        #     X_test_loc.loc[:, std_list] = scaler.transform(X_test_loc.loc[:, std_list])
+        X_test_loc.columns = feature_list 
 
         X_train_loc = np.array(X_train_loc, dtype='float32')
         X_val_loc = np.array(X_val_loc, dtype='float32')
@@ -261,14 +177,8 @@ if __name__ == '__main__':
     X_val_all.columns = feature_list
 
     X_test_all = pd.DataFrame(X_test_all)
-    X_test_all.columns = feature_list
-
-    # if std_list:
-    #     scaler = StandardScaler().fit(X_train_all.loc[:, std_list])
-    #     X_train_all.loc[:, std_list] = scaler.transform( X_train_all.loc[:, std_list])
-    #     X_val_all.loc[:, std_list] = scaler.transform( X_val_all.loc[:, std_list])
-    #     X_test_all.loc[:, std_list] = scaler.transform( X_test_all.loc[:, std_list])
-
+    X_test_all.columns = feature_list 
+   
     X_train_all = np.array(X_train_all)
     X_val_all = np.array(X_val_all)
     X_test_all = np.array(X_test_all)
@@ -299,11 +209,7 @@ if __name__ == '__main__':
       return cindex
 ######################################## Centralized Training ######################################
 
-    if args.alg == 'all_in':
-
-        memory = mem_mb()
-        print("Before:", memory, "MB")
-
+    if args.alg == 'all_in': 
         nets, local_model_meta_data, layer_type = init_nets(X_test_all.shape[1], args.dropout_p, 1, args, discretiser)
 
         try:
@@ -318,18 +224,12 @@ if __name__ == '__main__':
         print('>> All in Test D-Calibration: {}'.format(test_p_value))
         print('>> All in Test Weighted MAE PO: {}'.format(test_weighted_MAE_PO))
 
-        memory = mem_mb()
-        print("After:", memory, "MB")
-    
-    
-    
-
+          
 ############################################### FedAvg ##############################################################################
     elif args.alg == 'fedavg':
         print("Initializing nets")
 
-        memory = mem_mb()
-        print("Before:", memory, "MB")
+     
 
         nets, local_model_meta_data, layer_type = init_nets(X_train_local_std[0].shape[1], args.dropout_p, args.n_parties, args, discretiser)
         early_stopping = EarlyStopping(patience=args.patience, verbose=True, directory=args.modeldir, discretiser=discretiser, checkpoint_pth=f"{args.model}_model_run_{args.run_id}.pt")

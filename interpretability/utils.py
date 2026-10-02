@@ -45,7 +45,7 @@ def get_data_model_directory_partition_wise(model, data, fold, client):
     cent_tmpl=  PROJECT_ROOT / model_name / "models" /  "CL" / data / f"{model_name}_{fold}_global.pt" 
     fed_tmpl =  PROJECT_ROOT / model_name / "models" /  "FL" / data / f"{model_name}_{fold}_{client}.pt" 
     
-    return str(cent_tmpl), str(fed_tmpl) 
+    return str(cent_tmpl), str(fed_tmpl)
 
 ####################################### Site-Level Configuration ###################################
 
@@ -57,10 +57,10 @@ def get_data_model_directory_site_level(model, data, fold, client):
         raise ValueError(f"Unsupported model: {model_name}") 
     
     if model in ["FedPDNN", "FedPLSTM", "FedPAttn"]: 
-        model_name = "FedPseudo_Flare"  
+        model_name = "FedPseudo_Flare"
     
     ckpt_tmpl =   PROJECT_ROOT / model_name / "models" /  "FL" / data / f"{model_name}_{fold}_{client}.pt" 
-    return str(ckpt_tmpl)  
+    return str(ckpt_tmpl)
 
 ####################################### Fold-Level Configuration ###################################
 
@@ -72,7 +72,7 @@ def get_data_model_directory_fold_level(model, data, fold):
         raise ValueError(f"Unsupported model: {model_name}")
     
     if model in ["FedPDNN", "FedPLSTM", "FedPAttn"]: 
-        model_name = "FedPseudo_Flare"  
+        model_name = "FedPseudo_Flare"
     
     ckpt_tmpl =  PROJECT_ROOT / model_name / "models" /  "CL" / data / f"{model_name}_{fold}_global.pt" 
     return str(ckpt_tmpl)  

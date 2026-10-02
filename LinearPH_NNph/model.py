@@ -1,120 +1,71 @@
-import torch 
 from torch import nn
 
-def init_nets(input_size, dropout_p, n_parties, args, discretiser):
+############################# LinearPH/NNPH Model Initializer #####################################
 
-    nets = {net_i: None for net_i in range(n_parties)}
-
-    for net_i in range(n_parties):
-        hidden_sizes = [32, 32]
-        batch_norm=True   
-        
+def init_nets(input_size,  n_parties, args): 
+    nets = {net_i: None for net_i in range(n_parties)} 
+    for net_i in range(n_parties):  
         if args.model == "CoxPH":
-            net = CoxPH(dim_in=input_size, dim_out=len(discretiser.cuts), batch_norm=batch_norm) 
+            net = LinearPH( dim_in=input_size, dim_out=args.num_duration, batch_norm=True)
         elif args.model == "NNph":
-            net = MLPPH(dim_in=input_size, num_nodes=hidden_sizes, dim_out=len(discretiser.cuts), batch_norm=batch_norm, dropout=dropout_p)             
+            net = NNPH( dim_in=input_size, hidden_sizes=[32, 32], dim_out=args.num_duration, batch_norm=True, dropout=args.dropout)        
         else:
             print("not supported yet")
             exit(1)
-        nets[net_i] = net
+        nets[net_i] = net 
+    return nets 
 
-    model_meta_data = []
-    layer_type = []
-    for (k, v) in nets[0].state_dict().items():
-        model_meta_data.append(v.shape)
-        layer_type.append(k)
+############################# LinearPH Model Architecture #####################################
 
-    return nets, model_meta_data, layer_type
-  
-class DenseBlock(nn.Module):
-    def __init__(self, dim_in, dim_out, bias=True, batch_norm=True, dropout=0, activation=nn.ReLU, 
-                    w_init_=lambda w: nn.init.kaiming_normal_(w, nonlinearity='relu')):
-        super().__init__()
-        self.linear = nn.Linear(dim_in, dim_out, bias)
-        # fill in self.linear.weight.data with kaiming normal
-        if w_init_:
-            w_init_(self.linear.weight.data)
-        self.activation = activation()
+class LinearPH(nn.Module):
+    def __init__(self, dim_in, dim_out):
+        super().__init__() 
         
-        self.batch_norm = nn.LayerNorm(dim_out) if batch_norm else None
-        # self.batch_norm = nn.BatchNorm1d(dim_out) if batch_norm else None
-        self.dropout = nn.Dropout(dropout) if dropout else None
-
-    def forward(self, input):
-        input = self.activation(self.linear(input))
-        if self.batch_norm:
-            input = self.batch_norm(input)
-        if self.dropout:
-            input = self.dropout(input)
-        return input
-
-# output is unconstrained if output_activation not sigmoid
-class MLP(nn.Module):
-    def __init__(self, dim_in, num_nodes, dim_out, batch_norm=True, dropout=None, activation=nn.ReLU,
-                output_activation=None, output_bias=True,
-                w_init_=lambda w: nn.init.kaiming_normal_(w, nonlinearity='relu')):
-        super().__init__()
-        num_nodes = [dim_in] + num_nodes
-        
-        net = []
-        for d_in, d_out in zip(num_nodes[:-1], num_nodes[1:]):
-            net.append(DenseBlock(d_in, d_out, bias=True, batch_norm=batch_norm, 
-                        dropout=dropout, activation=activation, w_init_=w_init_))
-        # print(num_nodes[-1], dim_out, output_bias)
-        # print(type(num_nodes[-1]), type(dim_out))
-        net.append(nn.Linear(num_nodes[-1], dim_out, output_bias))
-        if output_activation:
-            net.append(output_activation)
-        self.net = nn.Sequential(*net)
-
-    def forward(self, input):
-        return self.net(input)
-
-class PHBlock(nn.Module):
-    def __init__(self, dim_in, dim_out, batch_norm=True):
-        super().__init__()
-        self.dim_out = dim_out
-        self.linear1 = nn.Linear(dim_in, 1, bias=False)
-        self.batch_norm = nn.BatchNorm1d(1) if batch_norm else None
-        # self.batch_norm = nn.BatchNorm1d(1) if batch_norm else None
-        self.linear2 = nn.Linear(1, dim_out, bias=True)
-        torch.nn.init.ones_(self.linear2.weight.data)
-        torch.nn.init.normal_(self.linear2.bias.data, mean=0.0, std=0.5)
-        self.linear2.weight.requires_grad = True 
- 
-    def forward(self, input):
-        input = self.linear1(input) 
-        input = self.linear2(input)
-        return input
-    
-
-class CoxPH(nn.Module):
-    def __init__(self, dim_in, dim_out, batch_norm=True, output_activation=None):
-        super().__init__()
-        net = []
-        net.append(PHBlock(dim_in, dim_out, batch_norm))
-        if output_activation:
-            net.append(output_activation)
-        self.net = nn.Sequential(*net)
-
-    def forward(self, input):
-        return self.net(input)
-
-class MLPPH(nn.Module):
-    def __init__(self, dim_in, num_nodes, dim_out, batch_norm=True, dropout=None, activation=nn.ReLU,
-                output_activation=None, output_bias=True,
-                w_init_=lambda w: nn.init.kaiming_normal_(w, nonlinearity='relu')):
-        super().__init__()
-        num_nodes = [dim_in] + num_nodes
-        net = []
-        for d_in, d_out in zip(num_nodes[:-1], num_nodes[1:]):
-            net.append(DenseBlock(d_in, d_out, bias=True, batch_norm=batch_norm, 
-                        dropout=dropout, activation=activation, w_init_=w_init_))
+        self.linear1 = nn.Linear( dim_in, 1, bias=False) 
+        self.linear2 = nn.Linear( 1, dim_out, bias=True)
          
-        net.append(PHBlock(num_nodes[-1], dim_out, batch_norm))
-        if output_activation:
-            net.append(output_activation)
-        self.net = nn.Sequential(*net)
+        nn.init.ones_( self.linear2.weight) 
+        nn.init.normal_( self.linear2.bias, mean=0.0, std=0.5)
 
-    def forward(self, input):
-        return self.net(input)
+    def forward(self, x):
+        x = self.linear1(x)
+        x = self.linear2(x) 
+        return x
+      
+############################# NNPH Model Architecture ##################################### 
+
+class NNPH(nn.Module):
+    def __init__( self, dim_in, hidden_sizes, dim_out, batch_norm=True, dropout=0.0):
+        super().__init__()
+
+        layers = []
+        prev = dim_in 
+        for hidden_size in hidden_sizes: 
+            linear = nn.Linear( prev, hidden_size, bias=True) 
+            nn.init.kaiming_normal_( linear.weight, nonlinearity="relu")
+
+            layers.append(linear)
+            layers.append(nn.ReLU())
+
+            if batch_norm:
+                layers.append(nn.BatchNorm1d(hidden_size))
+
+            if dropout and dropout > 0:
+                layers.append(nn.Dropout(dropout))
+
+            prev = hidden_size
+
+        # Proportional hazards layer
+        linear1 = nn.Linear(prev, 1, bias=False) 
+        linear2 = nn.Linear( 1, dim_out, bias=True)
+
+        nn.init.ones_(linear2.weight) 
+        nn.init.normal_(linear2.bias, mean=0.0, std=0.5)
+
+        layers.append(linear1)
+        layers.append(linear2)
+
+        self.net = nn.Sequential(*layers)
+
+    def forward(self, x):
+        return self.net(x) 

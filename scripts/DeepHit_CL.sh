@@ -62,9 +62,7 @@ for selection_idx in "${!selected_datasets[@]}"; do
 		RUN_DIR="${LOGROOT}/${dataset}/"
 		MODEL_DIR="${MODELDIR_ROOT}/${dataset}/"
 
-		mkdir -p "$RUN_DIR" "$MODEL_DIR"
-
-		# safer timestamp to avoid collisions
+		mkdir -p "$RUN_DIR" "$MODEL_DIR"  
 		TIMESTAMP="$(date +'%Y%m%d_%H%M%S')"
 		RUN_ID="${TIMESTAMP}_five_fold_run_id${five_fold_run_id}"
 

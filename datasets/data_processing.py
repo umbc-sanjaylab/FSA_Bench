@@ -1,9 +1,8 @@
 from dataclasses import dataclass
 from typing import List
 import numpy as np
-from datasets.data_loader import get_local_dataset
-from torch.utils.data import Dataset 
-import pandas as pd
+from data_loader import get_local_dataset
+from torch.utils.data import Dataset  
 import torch
 
 @dataclass
@@ -40,8 +39,7 @@ def split_survival_dataframe(df):
     Parameters
     ----------
     df : pandas.DataFrame
-        DataFrame containing feature columns together with
-        'time' and 'event'.
+        DataFrame containing feature columns together with  'time' and 'event'.
 
     Returns
     -------
@@ -90,12 +88,8 @@ def prepare_survival_data(args):
 
         clients.append(client_data)
 
-    if args.partition=="federated": 
-        pass
-    else:
-        centralized = build_centralized_data(clients)
-        return PreparedSurvivalData( clients=clients, centralized=centralized, feature_names=feature_names)  
-        
+    centralized = build_centralized_data(clients)
+    return PreparedSurvivalData( clients=clients, centralized=centralized, feature_names=feature_names)   
     
 ################################################## Centralized Data ######################################################
 

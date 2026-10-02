@@ -219,120 +219,138 @@ if __name__ == '__main__':
     # Create the validation set
     val_all = (X_val_all, y_val_all)
     test_cindex, test_brier, test_nbll, test_p_value, test_weighted_MAE_PO = np.nan, np.nan, np.nan, np.nan, np.nan 
-
+    alpha, sigma = (0.2, 0.1)
+    
+    if args.alg not in ['all_in', 'fedavg']:
+        raise ValueError(f"Unsupported algorithm: {args.alg}")
+    
 ######################################## Centralized Training ######################################
- 
-    logger.info("Initializing nets")   
-    nets, local_model_meta_data, layer_type, alpha, sigma = init_nets( input_size=X_train_local[0].shape[1], censor_rate = client_censored_train, dropout_p=args.dropout_p, n_parties=args.n_parties, args=args)  
-      
-    
-    early_stopping = EarlyStopping(patience=args.patience, verbose=True, directory=args.modeldir, checkpoint_pth=f"DeepHit_model_run_{args.run_id}.pt")
-    global_models, global_model_meta_data, global_layer_type, alpha, sigma = init_nets( input_size=X_train_local[0].shape[1], censor_rate=client_censored_train, dropout_p=args.dropout_p, n_parties=1, args=args)
+    if args.alg == 'all_in':
+        nets, local_model_meta_data, layer_type, alpha, sigma = init_nets( input_size=X_train_all.shape[1], censor_rate=client_censored_train, dropout_p=args.dropout_p, n_parties=1, args=args)  
+        try:
+            test_cindex, test_brier, test_nbll, test_p_value, test_weighted_MAE_PO = train_net_all(alpha, sigma, 0, nets[0], X_train_all, y_train_all, val_all, args.epochs, args.lr, args.optimizer, train_time_all, train_status_all,  X_val_all, val_time_all, val_status_all, X_test_all, test_time_all, test_status_all, evaltime, labtrans, args, args.device)
+        except Exception as e:
+            logger.info(f"[Exception in train_net_all method]:  {type(e).__name__}: {e}")
+            test_cindex, test_brier, test_nbll, test_p_value, test_weighted_MAE_PO = np.nan, np.nan, np.nan, np.nan, np.nan
+            traceback.print_exc()  
 
-    global_model = global_models[0] 
-    global_para = deepcopy(global_model.state_dict())
-    
-    if args.is_same_initial:
-        for net_id, net in nets.items():
-            net.load_state_dict(global_para) 
+        logger.info('>> All in Test Cindex: {}'.format(test_cindex))
+        logger.info('>> All in Test Brier: {}'.format(test_brier))
+        logger.info('>> All in Test N BLL: {}'.format(test_nbll))
+        logger.info('>> All in Test P_value: {}'.format(test_p_value))
+        logger.info('>> All in Test Weighted MAE PO: {}'.format(test_weighted_MAE_PO)) 
 
-    global_val_cindex = 0.0
-    test_cindex, test_brier, test_nbll, test_p_value, test_weighted_MAE_PO = np.nan, np.nan, np.nan, np.nan, np.nan
-    comm_round_done = 0
-
-    for comm_round in range(args.comm_round):
-        logger.info("in comm round:" + str(comm_round))
-        print('communication round:', comm_round)
-
-        arr = np.arange(args.n_parties)
-        np.random.shuffle(arr)
+    else:  
+        logger.info("Initializing nets")   
+        nets = init_nets( input_size=X_train_local[0].shape[1], censor_rate = client_censored_train, dropout_p=args.dropout_p, n_parties=args.n_parties, args=args)   
         
-        selected = arr[:int(args.n_parties * args.sample)]
-        global_para = deepcopy(global_model.cpu().state_dict())  
+        early_stopping = EarlyStopping(patience=args.patience, verbose=True, directory=args.modeldir, checkpoint_pth=f"DeepHit_model_run_{args.run_id}.pt")
+        global_models = init_nets( input_size=X_train_local[0].shape[1], censor_rate=client_censored_train, dropout_p=args.dropout_p, n_parties=1, args=args)
 
-        for client_id in selected:
-          if nets[client_id] is None:
-              reinitialized_nets, _, _, _, _ = init_nets( input_size=X_train_local[client_id].shape[1], censor_rate=client_censored_train[client_id], dropout_p=args.dropout_p, n_parties=1, args=args)
-              nets[client_id] = reinitialized_nets[0]
-
-          nets[client_id].load_state_dict(global_para) 
-
-        nets = local_train_net(alpha, sigma, client_name_array, nets, selected, args, X_train_local, train_time_local, train_status_local, X_val_local, val_time_local, val_status_local, X_test_local, test_time_local, test_status_local, evaltime, labtrans, tr_data_len, comm_round, args.device)
+        global_model = global_models[0] 
+        global_para = deepcopy(global_model.state_dict())
         
-        valid_clients = [client_id for client_id in selected if nets[client_id] is not None]
-        total_data_points = sum(tr_data_len[client_id] for client_id in valid_clients)
-        
-        new_global_para = None 
-        for client_id in valid_clients:
-            aggregation_weight = ( tr_data_len[client_id] / total_data_points ) 
-            net_para = nets[client_id].cpu().state_dict()
+        if args.is_same_initial:
+            for net_id, net in nets.items():
+                net.load_state_dict(global_para) 
 
-            if new_global_para is None:
-                new_global_para = {
-                    key: value * aggregation_weight
-                    for key, value in net_para.items()
-                }
-            else:
-                for key, value in net_para.items():
-                    new_global_para[key] += ( value * aggregation_weight)
+        global_val_cindex = 0.0
+        test_cindex, test_brier, test_nbll, test_p_value, test_weighted_MAE_PO = np.nan, np.nan, np.nan, np.nan, np.nan
+        comm_round_done = 0
 
-        global_model.load_state_dict(new_global_para)
-        
-        # 5. Evaluate the newly aggregated global model on clients
-        eval_clients = range(args.n_parties)
+        for comm_round in range(args.comm_round):
+            logger.info("in comm round:" + str(comm_round))
+            print('communication round:', comm_round)
 
-        global_val_cindex, test_cindex, test_brier, test_nbll, test_p_value, test_weighted_MAE_PO = evaluate_global_model_on_clients(global_model, alpha, sigma, eval_clients, X_val_local, val_time_local, val_status_local, X_test_local, test_time_local, test_status_local, train_time_local, train_status_local,evaltime, labtrans, args, device=args.device)
-        
-        model_dict = {"model_state_dict": global_para,
-            "duration_index": labtrans.cuts,
-            "num_durations": args.num_duration,
-            "alpha": alpha, "sigma": sigma,
-            "input_size": X_train.shape[1],
-            "dropout_p": args.dropout_p,
-            }  
-        
-        # test_cindex, test_brier, test_nbll
-        improved = early_stopping(
-            global_val_cindex,
-            model_dict,
-            round_idx=comm_round_done,
-            test_metrics={
-                "test_c_index": test_cindex,
-                "test_brier": test_brier,
-                "test_nbll": test_nbll,
-                "test_p_value": test_p_value,
-                "test_MAE_PO": test_weighted_MAE_PO
-            },
-        )
-
-        if improved:
-            print(
-                f"New best model selected at round {comm_round}: "
-                f"val_cindex={global_val_cindex:.4f}, "
-                f"test_cindex={test_cindex:.4f}, "
-                f"test_brier={test_brier:.4f}, "
-                f"test_nbll={test_nbll:.4f}",
-                f"test_p_value={test_p_value:.4f}, "
-                f"test_MAE_PO={test_weighted_MAE_PO:.4f}"
-            )
+            arr = np.arange(args.n_parties)
+            np.random.shuffle(arr)
             
-        comm_round_done = comm_round
-        if early_stopping.early_stop:
-            comm_round_done = comm_round
-            print("Early stopping")
-            break 
+            selected = arr[:int(args.n_parties * args.sample)]
+            global_para = deepcopy(global_model.cpu().state_dict())  
 
-        print(f'>> Global Model Test Cindex: {test_cindex:.4f}, Test Brier: {test_brier:.4f}, Test NBLL: {test_nbll:.4f}, Test P-Value: {test_p_value:.4f}, Test MAE-PO: {test_weighted_MAE_PO:.4f}') 
-        
-        # test_cindex, test_brier, test_nbll, test_p_value, test_weighted_MAE_PO  
-        final_round = early_stopping.best_round if early_stopping.best_round is not None else comm_round
-        final_val_cidx =  early_stopping.best_val_cindex if np.isfinite(early_stopping.best_val_cindex) else global_val_cindex
-        final_test_cidx =  early_stopping.best_test_cindex if early_stopping.best_test_cindex is not None else test_cindex 
-        final_test_brier =  early_stopping.best_test_brier if early_stopping.best_test_brier is not None  else test_brier
-        final_test_nbll =  early_stopping.best_test_nbll if early_stopping.best_test_nbll is not None else test_nbll
-        final_test_p_value =  early_stopping.best_test_p_value if early_stopping.best_test_p_value is not None else test_p_value
-        final_test_MAE_PO =   early_stopping.best_test_MAE_PO if early_stopping.best_test_MAE_PO is not None else test_weighted_MAE_PO
-         
+            for client_id in selected:
+              if nets[client_id] is None:
+                  reinitialized_nets, _, _, _, _ = init_nets( input_size=X_train_local[client_id].shape[1], censor_rate=client_censored_train[client_id], dropout_p=args.dropout_p, n_parties=1, args=args)
+                  nets[client_id] = reinitialized_nets[0]
+
+              nets[client_id].load_state_dict(global_para) 
+
+            nets = local_train_net(alpha, sigma, client_name_array, nets, selected, args, X_train_local, train_time_local, train_status_local, X_val_local, val_time_local, val_status_local, X_test_local, test_time_local, test_status_local, evaltime, labtrans, tr_data_len, comm_round, args.device)
+            
+            valid_clients = [client_id for client_id in selected if nets[client_id] is not None]
+            total_data_points = sum(tr_data_len[client_id] for client_id in valid_clients)
+            
+            new_global_para = None 
+            for client_id in valid_clients:
+                aggregation_weight = ( tr_data_len[client_id] / total_data_points ) 
+                net_para = nets[client_id].cpu().state_dict()
+
+                if new_global_para is None:
+                    new_global_para = {
+                        key: value * aggregation_weight
+                        for key, value in net_para.items()
+                    }
+                else:
+                    for key, value in net_para.items():
+                        new_global_para[key] += ( value * aggregation_weight)
+
+            global_model.load_state_dict(new_global_para)
+            
+            # 5. Evaluate the newly aggregated global model on clients
+            eval_clients = range(args.n_parties)
+
+            global_val_cindex, test_cindex, test_brier, test_nbll, test_p_value, test_weighted_MAE_PO = evaluate_global_model_on_clients(global_model, alpha, sigma, eval_clients, X_val_local, val_time_local, val_status_local, X_test_local, test_time_local, test_status_local, train_time_local, train_status_local,evaltime, labtrans, args, device=args.device)
+            
+            model_dict = {"model_state_dict": global_para,
+                "duration_index": labtrans.cuts,
+                "num_durations": args.num_duration,
+                "alpha": alpha, "sigma": sigma,
+                "input_size": X_train.shape[1],
+                "dropout_p": args.dropout_p,
+                }  
+            
+            # test_cindex, test_brier, test_nbll
+            improved = early_stopping(
+                global_val_cindex,
+                model_dict,
+                round_idx=comm_round_done,
+                test_metrics={
+                    "test_c_index": test_cindex,
+                    "test_brier": test_brier,
+                    "test_nbll": test_nbll,
+                    "test_p_value": test_p_value,
+                    "test_MAE_PO": test_weighted_MAE_PO
+                },
+            )
+
+            if improved:
+                print(
+                    f"New best model selected at round {comm_round}: "
+                    f"val_cindex={global_val_cindex:.4f}, "
+                    f"test_cindex={test_cindex:.4f}, "
+                    f"test_brier={test_brier:.4f}, "
+                    f"test_nbll={test_nbll:.4f}",
+                    f"test_p_value={test_p_value:.4f}, "
+                    f"test_MAE_PO={test_weighted_MAE_PO:.4f}"
+                )
+                
+            comm_round_done = comm_round
+            if early_stopping.early_stop:
+                comm_round_done = comm_round
+                print("Early stopping")
+                break 
+
+            print(f'>> Global Model Test Cindex: {test_cindex:.4f}, Test Brier: {test_brier:.4f}, Test NBLL: {test_nbll:.4f}, Test P-Value: {test_p_value:.4f}, Test MAE-PO: {test_weighted_MAE_PO:.4f}') 
+            
+            # test_cindex, test_brier, test_nbll, test_p_value, test_weighted_MAE_PO  
+            final_round = early_stopping.best_round if early_stopping.best_round is not None else comm_round
+            final_val_cidx =  early_stopping.best_val_cindex if np.isfinite(early_stopping.best_val_cindex) else global_val_cindex
+            final_test_cidx =  early_stopping.best_test_cindex if early_stopping.best_test_cindex is not None else test_cindex 
+            final_test_brier =  early_stopping.best_test_brier if early_stopping.best_test_brier is not None  else test_brier
+            final_test_nbll =  early_stopping.best_test_nbll if early_stopping.best_test_nbll is not None else test_nbll
+            final_test_p_value =  early_stopping.best_test_p_value if early_stopping.best_test_p_value is not None else test_p_value
+            final_test_MAE_PO =   early_stopping.best_test_MAE_PO if early_stopping.best_test_MAE_PO is not None else test_weighted_MAE_PO
+            
     import builtins
     csv_path = os.path.join(args.logdir, "results_early.csv") 
 

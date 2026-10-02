@@ -6,147 +6,114 @@ from math import *
 from model import *
 from utils import *
 from copy import deepcopy
-from scipy.stats import combine_pvalues
-torch.cuda.set_per_process_memory_fraction(0.15, 0)
-
-# #################################### FedPseudo################################################# 
-
-def train(dataloader, model, loss_fn, optimizer, device1: str = 'cpu'):
-    device = device1
-    # print(f"device is {device}")
-
-    # Total number of observation divided by batch size
-    num_batches = len(dataloader)
-    model.to(device)
-    model.train()
-
-    total_loss = 0
-    for batch, (X, time, status) in enumerate(dataloader):
-        X, time, status = X.to(device), time.to(
-            device), status.to(device)  # x is covariates
-        # Compute prediction error
-        pred = model(X)
-        loss = loss_fn(pred, time, status)
-
-        # Backpropagation
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
-        total_loss += loss.item()
-    total_loss /= num_batches
-    return total_loss
-
-# Function for evaluating the model
-
-
-def evaluate(dataloader, model, loss_fn, device: str = 'cpu'):
-
-    num_batches = len(dataloader)
-    model.eval()
-    test_loss = 0
-    with torch.no_grad():
-        for X, time, status in dataloader:
-            X, time, status = X.to(device), time.to(
-                device), status.to(device)  # x is covariates
-            pred = model(X)
-            test_loss += loss_fn(pred, time, status).item()
-
-    test_loss /= num_batches
-    return test_loss
-
+from scipy.stats import combine_pvalues  
+from model import train_epoch, validation_loss
 
 ################  Training NNnPH Model with "Centralized" framework in Local Client  #################################
 
-def train_net_all(net_id, net, train_dataloader, val_dataloader, epochs, lr, args_optimizer, train_time, train_status, X_val, val_time, val_status, X_test, test_time, test_status, evaltime, discretiser, args, device: str = "cpu"):
-    print('Training network %s' % str(net_id))
-
-    if args_optimizer == 'adam':
-        optimizer = optim.Adam(filter(lambda p: p.requires_grad, net.parameters()), lr=lr, weight_decay=args.reg)  # Default optimizer
-    elif args_optimizer == 'amsgrad':
-        optimizer = optim.Adam(filter(lambda p: p.requires_grad, net.parameters()), lr=lr, weight_decay=args.reg, amsgrad=True)
-    elif args_optimizer == 'sgd':
-        optimizer = optim.SGD(filter(lambda p: p.requires_grad, net.parameters()), lr=lr, momentum=args.rho, weight_decay=args.reg)
-
-    criterion = negative_llh  # Negative log-likelihood loss function
-    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', patience=args.patience)  # Learning rate scheduler
+def train_centralized(model, data, eval_times, args): 
+    device = args.device 
+    model = model.to(device) 
     
-    Epochs = epochs  # Number of local epochs
-    patience = args.patience  # Number of patience for early stopping
-    
-    best_val_loss = 10000000
-    best_val_cindex = 0.0
-    best_state = deepcopy(net.state_dict())
- 
-    train_losses = [] 
-    val_losses = []
-    cindex = []
-    es = 0
+    # NNnPH-specific target preparation
+    train_loader, val_loader, discretiser =   prepare_nnnph_dataloaders(data, args) 
 
-    X_val_tensor = torch.as_tensor(X_val, dtype=torch.float32, device=device)
-    val_time_array = np.asarray(val_time)
-    val_status_array = np.asarray(val_status)
+    ################################################ Optimizer ################################################
 
-    for epoch in range(Epochs):
-        # Calculate the train loss using train function
+    if args.optimizer == "adam": 
+        optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=args.lr, weight_decay=args.reg) 
+    elif args.optimizer == "amsgrad": 
+        optimizer = torch.optim.Adam( filter( lambda p: p.requires_grad, model.parameters() ), lr=args.lr, weight_decay=args.reg, amsgrad=True) 
+    elif args.optimizer == "sgd": 
+        optimizer = torch.optim.SGD( filter( lambda p: p.requires_grad, model.parameters() ), lr=args.lr, momentum=args.rho, weight_decay=args.reg ) 
+    else:
+        raise ValueError( f"Unsupported optimizer: {args.optimizer}") 
 
-        print(f"Epoch {epoch+1}\n-------------------------------")
-        train_loss = train(train_dataloader, net, criterion, optimizer, device)
-        train_losses.append(train_loss)
+    ################################################ Scheduler ################################################ 
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode="min", patience=args.patience)
 
-        # print(f"epoch {epoch} | train | {train_loss}")
-        # print('Learning Rate:',optimizer.param_groups[0]['lr'])
+    ################################################ Early Stopping ###########################################
 
-        # Calculate the validation loss using evaluate function
-        val_loss = evaluate(val_dataloader, net, criterion, device)
-        scheduler.step(val_loss)
-        val_losses.append(val_loss)
+    best_val_cindex = -np.inf 
+    best_model_state = deepcopy( model.state_dict()) 
+    early_stop_counter = 0
 
-        # logging.info(f"epoch {epoch} | validate |{val_loss}")
-        # print('Epoch:',epoch, 'validation loss:', val_loss)
 
-        metrics = Concordance(net, X_val_tensor, val_time_array,  val_status_array, discretiser, device)
-        print(f"validation concordance index is {metrics}")
-        cindex.append(metrics)
+    ################################################ Validation Data ########################################## 
+    X_val_tensor = torch.as_tensor(data.val.X, dtype=torch.float32, device=device)
 
-        # Early Stopping Criteria
-        if metrics is None or not np.isfinite(metrics):
-            logger.warning( f"Client: {net_id} invalid validation C-index at epoch {epoch}: {metrics}. Skipping early-stopping update for this epoch.")
-            es += 1
-            if es >= patience:
+
+    ################################################ Training ################################################# 
+    for epoch in range(args.epochs): 
+        train_loss = train_epoch( train_loader, model, optimizer, device) 
+        val_loss = validation_loss(val_loader, model, device)
+
+        if np.isfinite(val_loss):
+            scheduler.step(val_loss)
+
+        val_cindex = Concordance( model, X_val_tensor, data.val.time, data.val.event, discretiser, device) 
+        print( f"Epoch {epoch + 1}/{args.epochs} | train_loss={train_loss:.4f} | " f"val_loss={val_loss:.4f} |  val_cindex={val_cindex}") 
+
+        ################################################ Early stopping ######################################
+
+        if val_cindex is None or not np.isfinite(val_cindex):
+            early_stop_counter += 1
+            if early_stop_counter >= args.patience:
                 break
-            continue  # Early Stopping Criteria
+            continue 
 
-        elif metrics > best_val_cindex:
-            best_val_cindex = metrics
-            es = 0
-            best_model_state = deepcopy(net.state_dict())
+        if val_cindex > best_val_cindex:
+            best_val_cindex = val_cindex
+            best_model_state = deepcopy( model.state_dict())
+            early_stop_counter = 0
         else:
-            es += 1
-            if es >= patience:
+            early_stop_counter += 1
+            
+            if early_stop_counter >= args.patience:
                 break
 
-    print("Done!")
 
-    # Load the trained model and evaluate the performances
-    net.load_state_dict(best_model_state)
-    model_file_name = args.modeldir +  'Centralized_{}_{}_{}_{}.pt'.format( args.model, args.dataset, args.run_id, net_id)
-    
-    torch.save(net.state_dict(), model_file_name)
-    torch.save({ "model": net.state_dict(), "discretizer": discretiser }, model_file_name)
-    print(f"model is saved at {model_file_name}")
+    ################################################ Restore Best Model #######################################
 
-    net.eval()
-    test_cindex, test_brier, test_nbll, test_p_value, test_weighted_MAE_PO = Evaluation(net, train_time, train_status, X_test, test_time, test_status, evaltime, discretiser, device)
+    model.load_state_dict(best_model_state) 
+    model.eval() 
 
-    print('>> Test Cindex: {}'.format(test_cindex))
-    print('>> Test Brier: {}'.format(test_brier))
-    print('>> Test NBLL: {}'.format(test_nbll))
-    
-    print('>> Test P-Value: {}'.format(test_p_value))
-    print('>> Test Weighted MAE PO: {}'.format(test_weighted_MAE_PO))
+    ################################################ Save Model ################################################
 
-    print(' ** Training complete **')
-    return test_cindex, test_brier, test_nbll, test_p_value, test_weighted_MAE_PO 
+    os.makedirs( args.modeldir, exist_ok=True ) 
+    model_path = os.path.join( args.modeldir, (f"Centralized_" f"{args.model}_" f"{args.dataset}_" f"{args.run_id}_0.pt" ) )
+
+    torch.save( { "model": model.state_dict(), "discretizer": discretiser }, model_path) 
+    print( f"Model saved at {model_path}" )
+
+
+    ################################################ Test Evaluation #########################################
+
+    try:
+        test_cindex, test_brier, test_nbll, test_p_value, test_weighted_MAE_PO = Evaluation( model,
+            data.train.time, data.train.event,
+            data.test.X, data.test.time, data.test.event,
+            eval_times, discretiser, device)
+
+    except Exception as e: 
+        print( f"[Centralized evaluation error] " f"{type(e).__name__}: {e}" ) 
+        test_cindex, test_brier, test_nbll, test_p_value, test_weighted_MAE_PO = np.nan, np.nan, np.nan, np.nan, np.nan  
+
+
+    print( f">> Test C-index: {test_cindex}") 
+    print( f">> Test Brier: {test_brier}") 
+    print( f">> Test NBLL: {test_nbll}") 
+    print( f">> Test D-Calibration: {test_p_value}") 
+    print( f">> Test Weighted MAE PO: {test_weighted_MAE_PO}") 
+
+    return {
+        "cindex": test_cindex,
+        "brier": test_brier,
+        "nbll": test_nbll,
+        "d_calibration": test_p_value,
+        "mae_po": test_weighted_MAE_PO,
+        "best_val_cindex": best_val_cindex
+    } 
 
 ################  Training NNnPH Model with "FedAvg" framework in Local Client  #################################
 

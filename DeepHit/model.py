@@ -3,92 +3,57 @@ import torchtuples as tt
 from torch import nn
 
 
-class VannilaMLPNetwork(nn.Module):
-    def __init__(self, in_features, hidden_sizes, out_features=1, dropout=0.0, output_bias=False):
-        super().__init__()
-        layers = []
-        prev = in_features
-        for h in hidden_sizes:
-            layers.append(nn.Linear(prev, h, bias=True))
-            layers.append(nn.LayerNorm(h))
-            layers.append(nn.ReLU())
-            if dropout and dropout > 0:
-                layers.append(nn.Dropout(dropout))
-            prev = h
-
-        layers.append(nn.Linear(prev, out_features, bias=output_bias))
-        self.net = nn.Sequential(*layers)
-
-    def forward(self, x):
-        return self.net(x)
-
-
-class CauseSpecificNet(nn.Module):
-    """
-    Cause-specific network (DeepHit-style) WITHOUT residual connections, using custom VannilaMLPNetwork with LayerNorm (batch-size safe).
-    """
-
-    def __init__(self, in_features, num_nodes_shared,  num_nodes_indiv, num_risks,  out_features, dropout=None,):
+class CauseSpecificNet(nn.Module): 
+    def __init__( self, in_features, num_nodes_shared, num_nodes_indiv, num_risks, out_features, dropout=0.0):
         super().__init__()
 
-        # Shared network having num_nodes_shared = [h1, h2, ..., h_last]
-        self.shared_net = VannilaMLPNetwork(in_features=in_features,   hidden_sizes=num_nodes_shared[:-1], out_features=num_nodes_shared[-1],  dropout=dropout,  output_bias=True, )
+        # Shared network
+        self.shared_net = nn.Sequential(
+            nn.Linear(in_features, num_nodes_shared[0]),
+            nn.LayerNorm(num_nodes_shared[0]),
+            nn.ReLU(),
+            nn.Dropout(dropout), 
+            nn.Linear( num_nodes_shared[0], num_nodes_shared[-1], bias=True)
+        )
 
-        # Risk-specific heads  
-        self.risk_nets = nn.ModuleList()
+        # Concatenate original input with shared representation
         risk_in = num_nodes_shared[-1] + in_features
-        
-        for _ in range(num_risks):
-            net = VannilaMLPNetwork(
-                in_features=risk_in,
-                hidden_sizes=num_nodes_indiv,
-                out_features=out_features,
-                dropout=dropout,
-                output_bias=True,
-            )
-            self.risk_nets.append(net)
+ 
+        layers = [] 
+        for _ in range(num_risks):  
+            layers.append(nn.Sequential(
+                nn.Linear(risk_in, num_nodes_indiv[0]),
+                nn.LayerNorm(num_nodes_indiv[0]),
+                nn.ReLU(),
+                nn.Dropout(dropout), 
+                nn.Linear( num_nodes_indiv[0], out_features, bias=True )
+            ))
+            
+        self.risk_nets = nn.ModuleList(layers)
 
-    def forward(self, x):
-        """
-        x: (batch_size, in_features)
-        return: (batch_size, num_risks, out_features)
-        """
-        shared_out = self.shared_net(x)                     # (B, H)
-        z = torch.cat([shared_out, x], dim = 1)
-        risk_outs = [net(z) for net in self.risk_nets]
-        out = torch.stack(risk_outs, dim=1)                 # (B, R, O)
-        return out
+    def forward(self, x): 
+        shared_out = self.shared_net(x) 
+        z = torch.cat([shared_out, x], dim=1)
+
+        risk_outs = [net(z) for net in self.risk_nets] 
+        return torch.stack(risk_outs, dim=1)
 
 
-def init_nets(input_size, censor_rate, dropout_p, n_parties, args):
-
-    num_nodes_shared = [128, 64]
-    num_nodes_indiv = [64, 32]
-    num_risks = 1
-
-    output_size = args.num_duration
-    print("dataset is ", args.dataset)
-
-    nets = {net_i: None for net_i in range(n_parties)}
-    num_nodes_shared = [128, 64]
-
-    num_nodes_indiv = [32]
-    alpha, sigma = (0.2, 0.1)
-
+def init_nets(input_size, n_parties, args): 
+    nets = {net_i: None for net_i in range(n_parties)}  
     for net_i in range(n_parties):
         if args.model == "DeepHit":
-            net = CauseSpecificNet(input_size, num_nodes_shared, num_nodes_indiv, num_risks, output_size, dropout_p)
+            net = CauseSpecificNet(
+                        in_features=input_size,
+                        num_nodes_shared=[128, 64],
+                        num_nodes_indiv=[32],
+                        num_risks=1,
+                        out_features=args.num_duration,
+                        dropout=args.dropout
+                  )
         else:
             print("not supported yet")
             exit(1)
 
-        nets[net_i] = net
-
-    model_meta_data = []
-    layer_type = []
-    for (k, v) in nets[0].state_dict().items():
-        model_meta_data.append(v.shape)
-        layer_type.append(k)
-
-    print(f"Value of alpha: {alpha} and value of sigma: {sigma} ")
-    return nets, model_meta_data, layer_type, alpha, sigma 
+        nets[net_i] = net  
+    return nets       
