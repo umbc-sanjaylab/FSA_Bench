@@ -5,22 +5,29 @@ from copy import deepcopy
 from utils import prepare_client_dataloaders, build_optimizer, train_epoch, validation_loss
 from utils import Concordance, Evaluation 
 
+################  Logger Initialization  ################################# 
+
+import logging 
+logger = logging.getLogger("experiment")
+
+################  Finite Metric Check  ################################# 
+
 def is_finite_metric(value):
     return value is not None and np.isscalar(value) and np.isfinite(float(value))  
 
 
-################  Training NNnPH Model with "FedAvg" framework in Local Client  #################################
+################  Training NNnPH Model with "FedAvg" framework in Local Client  ################################# 
 
 def train_local_client( global_model, client, discretiser, args):
     device = args.device
 
     # Each selected client starts from the current global model.
-    local_model = deepcopy( global_model ).to(device) 
-    train_loader, val_loader = prepare_client_dataloaders( client, discretiser, args)
+    local_model = deepcopy(global_model).to(device) 
+    train_loader, val_loader = prepare_client_dataloaders(client, discretiser, args)
 
-    optimizer = build_optimizer( local_model, args) 
-    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau( optimizer, mode="min", patience=args.patience) 
-    best_model_state = deepcopy( local_model.state_dict())
+    optimizer = build_optimizer(local_model, args) 
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode="min", patience=args.patience) 
+    best_model_state = deepcopy(local_model.state_dict())
 
     best_val_cindex = -np.inf
     early_stop_counter = 0
@@ -42,9 +49,9 @@ def train_local_client( global_model, client, discretiser, args):
             try:
                 val_cindex = Concordance( local_model, X_val, client.val.time, client.val.event, discretiser, device) 
             except Exception as exc:
-                print(f"[Client {client.client_id}] " f"validation C-index failed: {exc}")
+                logger.exception(f"[Client {client.client_id}] validation C-index failed: {exc}")
 
-        print( f"Client={client.client_id} | epoch={epoch + 1} | train_loss={train_loss} | val_loss={val_loss} |  val_cindex={val_cindex}")
+        logger.info( f"Client={client.client_id} | epoch={epoch + 1} | train_loss={train_loss} | val_loss={val_loss} |  val_cindex={val_cindex}")
 
         # check validity of C-index before updating early stopping   
         if  val_cindex is None or not np.isfinite(val_cindex):
@@ -66,7 +73,9 @@ def train_local_client( global_model, client, discretiser, args):
 
     local_model.load_state_dict(best_model_state) 
     return local_model
-  
+
+################  Evaluate global model on clients using their local data ################################# 
+
 def evaluate_global_model_on_clients( global_model, clients, eval_times, discretiser, args):
     device = args.device 
     global_model.to(device)
@@ -84,14 +93,15 @@ def evaluate_global_model_on_clients( global_model, clients, eval_times, discret
 
     p_values = [] 
     for client in clients: 
-        val_cindex = np.nan 
+        
         if np.any(client.val.event == 1): 
-            X_val = torch.as_tensor(client.val.X, dtype=torch.float32, device=device)
+            X_val = torch.as_tensor(client.val.X, dtype=torch.float32)
 
             try:
                 val_cindex = Concordance( global_model, X_val, client.val.time, client.val.event, discretiser, device ) 
             except Exception as exc:
-                print(f"[Client {client.client_id}] validation evaluation failed: {exc}")
+                val_cindex = np.nan 
+                logger.exception(f"[Client {client.client_id}] validation evaluation failed: {exc}")
 
         try: 
             test_cindex, test_brier, test_nbll, test_p_value, test_mae_po = Evaluation(global_model,
@@ -99,7 +109,7 @@ def evaluate_global_model_on_clients( global_model, clients, eval_times, discret
                 client.test.X, client.test.time, client.test.event,
                 eval_times, discretiser, device) 
         except Exception as exc: 
-            print(f"[Client {client.client_id}] test evaluation failed: {exc}")
+            logger.exception(f"[Client {client.client_id}] test evaluation failed: {exc}")
             test_cindex, test_brier, test_nbll = np.nan, np.nan, np.nan
             test_p_value, test_mae_po = np.nan, np.nan
 

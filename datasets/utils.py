@@ -18,12 +18,11 @@ def five_fold_cross_validation(dataset_name, centralized_data, no_of_fold, run_i
     event_col = "event" if "event" in centralized_data.columns else "status" 
     status_data =  np.asarray(centralized_data[event_col], dtype="float32").reshape(-1).astype(int) 
 
-    folds = [] 
+    folds = []
     for _, test_idx in skf.split(centralized_data, status_data):
         folds.append(test_idx)
     
-    fold_id = run_id % no_of_fold
-
+    fold_id = run_id % no_of_fold 
     test_fold_id = fold_id
     val_fold_id = (fold_id + 1) % no_of_fold
 

@@ -3,20 +3,17 @@ import torch
 
 ############################# NNnPH Model Initializer #####################################
 
-def init_nets(input_size, n_parties, args): 
-    nets = {net_i: None for net_i in range(n_parties)} 
-    for net_i in range(n_parties): 
-        if args.model == "LinearPH":
-            net = LinearPH( dim_in=input_size, dim_out=args.num_duration, batch_norm=True)
-        elif args.model == "NNph":
-            net = NNPH( dim_in=input_size, hidden_sizes=[32, 32], dim_out=args.num_duration, batch_norm=True, dropout=args.dropout)      
-        if args.model == "NNnPH":
-            net = NNnPHNetwork(dim_in=input_size, hidden_sizes=[32, 32], dim_out=args.num_duration, batch_norm=True, dropout=args.dropout)
-        else:
-            print("not supported yet")
-            exit(1)
-        nets[net_i] = net 
-    return nets  
+def init_net(input_size, args):  
+    if args.model == "LinearPH":
+        net = LinearPH( dim_in=input_size, dim_out=args.num_duration, batch_norm=True)
+    elif args.model == "NNph":
+        net = NNPH( dim_in=input_size, hidden_sizes=[32, 32], dim_out=args.num_duration, batch_norm=True, dropout=args.dropout)      
+    if args.model == "NNnPH":
+        net = NNnPHNetwork(dim_in=input_size, hidden_sizes=[32, 32], dim_out=args.num_duration, batch_norm=True, dropout=args.dropout)
+    else:
+        print("not supported yet")
+        exit(1) 
+    return net 
 
 ############################# LinearPH Model Architecture #####################################
 

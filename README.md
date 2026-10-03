@@ -73,26 +73,51 @@ numpy==1.24.3
 
 ## Running Experiments
 
-FSA-Bench provides unified shell scripts for running centralized learning (CL) and federated learning (FL) experiments. The scripts are available in the `scripts/` directory.
+FSA-Bench provides unified scripts for running centralized learning (CL) and federated learning (FL) experiments. The scripts are located in the repository root.
 
 Each experiment is specified using:
 
 - **Model name**
 - **Dataset name**
-- **Run ID / cross-validation fold**
+ 
+All commands should be executed from the repository root.
 
-All commands should be executed from the repository root. You can run centralized experiment using:
+### Linux
+
+To run a centralized learning experiment:
 
 ```bash
-# Centralized Learning
-bash scripts/run_cl.sh <model> <dataset> <run_id>
-```
+bash scripts/run_fl.sh <model> <dataset>
+``` 
 
-For running federated experiments, use this command: 
+To run a federated experiment, use this command: 
 
 ```bash
 # Federated Learning
-bash scripts/run_fl.sh <model> <dataset> <run_id>
+bash run_fl.sh <model> <dataset> 
+```
+
+For example, to model Pbc3 dataset using NNnPH model, we can use this: 
+
+```bash
+bash scripts/run_cl.sh NNnPH Pbc3
+bash scripts/run_fl.sh NNnPH Pbc3
+```
+
+### Windows
+
+For native Windows PowerShell, use this PowerShell scripts:
+
+```bash
+.\scripts\run_CL.ps1 <model> <dataset>
+.\scripts\run_FL.ps1 <model> <dataset> 
+```
+
+For example, to model Pbc3 dataset using NNnPH model, we can use this: 
+
+```bash
+.\scripts\run_CL.ps1 NNnPH Pbc3
+.\scripts\run_FL.ps1 NNnPH Pbc3
 ```
 
 ## Dataset
@@ -103,16 +128,16 @@ The number of cross-validation folds, federated clients, and batch sizes vary ac
 
 | Dataset | Samples | Variables | Event (%) | Censoring (%) | # Clients | Data Link |
 | --- | ---: | ---: | ---: | ---: | ---: | --- |
-| **TCGA** | 6,084 | 283 | 30.50 | 69.50 | 7 | [Link](https://www.cancer.gov/ccg/research/genome-sequencing/tcga) |
-| **Aids2** | 2,839 | 3 | 62.03 | 37.97 | 4 | [Link](https://rdrr.io/cran/MASS/man/Aids2.html) |
-| **LeukSurv** | 1,043 | 4 | 84.28 | 15.72 | 24 | [Link](https://rdrr.io/cran/spBayesSurv/man/LeukSurv.html) |
-| **Pbc3** | 349 | 12 | 17.48 | 82.52 | 6 | [Link](https://www.rdocumentation.org/packages/pec/versions/2025.06.24/topics/Pbc3) |
-| **Dialysis** | 6,805 | 2 | 23.56 | 76.44 | 67 | [Link](https://rdrr.io/cran/RcmdrPlugin.survival/man/Dialysis.html) |
-| **Oropharyngeal Carcinoma** | 192 | 12 | 72.40 | 27.60 | 6 | [Link](https://rdrr.io/cran/invGauss/man/d.oropha.rec.html) |
-| **cgd** | 128 | 8 | 34.38 | 65.62 | 4 | [Link](https://rdrr.io/cran/survival/man/cgd.html) |
-| **uis** | 628 | 7 | 80.89 | 19.11 | 2 | [Link](https://github.com/graemeleehickey/hosmer-lemeshow/blob/master/edition2/uis.txt) |
-| **scania** | 1,040 | 4 | 52.60 | 47.40 | 5 | [Link](https://cran.r-project.org/web/packages/eha/refman/eha.html#scania) |
-| **SEER** | 25,749 | 11 | 25.36 | 74.64 | 3 | [Link](https://seer.cancer.gov/) |
+| [TCGA](https://www.cancer.gov/ccg/research/genome-sequencing/tcga) | 6,084 | 283 | 30.50 | 69.50 | 7 | [TCGA Hub](https://xenabrowser.net/datapages/?hub=https://tcga.xenahubs.net:443) |
+| [Aids2](https://rdrr.io/cran/MASS/man/Aids2.html) | 2,839 | 3 | 62.03 | 37.97 | 4 | [SurvSet](https://github.com/ErikinBC/SurvSet) |
+| [LeukSurv](https://rdrr.io/cran/spBayesSurv/man/LeukSurv.html) | 1,043 | 4 | 84.28 | 15.72 | 24 | [SurvSet](https://github.com/ErikinBC/SurvSet) |
+| [Pbc3](https://www.rdocumentation.org/packages/pec/versions/2025.06.24/topics/Pbc3) | 349 | 12 | 17.48 | 82.52 | 6 | [SurvSet](https://github.com/ErikinBC/SurvSet) |
+| [Dialysis](https://rdrr.io/cran/RcmdrPlugin.survival/man/Dialysis.html) | 6,805 | 2 | 23.56 | 76.44 | 67 | [SurvSet](https://github.com/ErikinBC/SurvSetl) |
+| [Oropharyngeal Carcinoma](https://rdrr.io/cran/invGauss/man/d.oropha.rec.html) | 192 | 12 | 72.40 | 27.60 | 6 | [SurvSet](https://github.com/ErikinBC/SurvSet) |
+| [cgd](https://rdrr.io/cran/survival/man/cgd.html) | 128 | 8 | 34.38 | 65.62 | 4 | [SurvSet](https://github.com/ErikinBC/SurvSet) |
+| [uis](https://github.com/graemeleehickey/hosmer-lemeshow/blob/master/edition2/uis.txt) | 628 | 7 | 80.89 | 19.11 | 2 | [SurvSet](https://github.com/ErikinBC/SurvSet) |
+| [scania](https://cran.r-project.org/web/packages/eha/refman/eha.html#scania) | 1,040 | 4 | 52.60 | 47.40 | 5 | [SurvSet](https://github.com/ErikinBC/SurvSet) |
+| [SEER](https://seer.cancer.gov/)  | 25,749 | 11 | 25.36 | 74.64 | 3 | [SEER](https://seer.cancer.gov/data/) |
 
 
 > Dataset availability and configuration may vary across individual model scripts. 
@@ -149,7 +174,7 @@ python CL_vs_FL.py
 
 | Argument / Option | Description |
 | --- | --- |
-| `-d <dataset_name>` | Specifies the dataset name used for the interpretability experiment. | 
+| `-d <dataset_name>` | Specifies the dataset name used for the interpretability experiment. |
 
 For example, this command runs the fold-level interpretability script using dataset name `seer`. 
 

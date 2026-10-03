@@ -1,14 +1,13 @@
-import traceback
-
-import numpy as np
+import numpy as np, traceback
 from lifelines import KaplanMeierFitter
 import torch, warnings    
 from torch.utils.data import DataLoader, TensorDataset   
-import pandas as pd 
-from NNnPH.utils import Concordance
+import pandas as pd  
 from pycox.evaluation import EvalSurv  
 from torch.utils.data import DataLoader, TensorDataset
-import torch 
+
+import logging 
+logger = logging.getLogger("experiment")
 
 ##################################### Optimizer from Arguments ############################################################### 
 
@@ -159,19 +158,16 @@ def Concordance(model, x, durations, events, discretiser, device="cpu"):
     # Predict the survival probability for test set
     sp = predict_surv(model, x.to(device))
     surv = surv_const_pdf_df(sp, discretiser.cuts)
-
-    cindex = np.nan
+ 
     # EvalSurv function from pycox package.
-    ev = EvalSurv(surv, durations, events, censor_surv='km')
-
+    ev = EvalSurv(surv, durations, events, censor_surv='km') 
     try:
         cindex = ev.concordance_td()
         if not np.isfinite(cindex):
             cindex = np.nan
-            print("[C-index WARNING] NaN/Inf returned.")
+            logger.warning("[C-index WARNING] NaN/Inf returned.")
     except ZeroDivisionError as e:
-        print(
-            f"[Exception in evaluation method for concordance index score computation]:  {type(e).__name__}: {e}")
+        logger.exception(f"[Exception in evaluation method for concordance index score computation]:  {type(e).__name__}: {e}")
         cindex = np.nan
         traceback.print_exc()
     return cindex
@@ -238,140 +234,93 @@ class Discretiser():
     def dim_out(self):
         if self.cuts is None:
             raise ValueError("Need to call `fit` before this is accessible.")
-        return len(self.cuts)
-      
-
-
+        return len(self.cuts) 
 
 def is_finite_metric(value):
     return  value is not None and np.isscalar(value) and np.isfinite(float(value))  
 
+############################################# Metrics value test  #################################################################
+ 
+def safe_metric(metric_name, metric_fn):
+    try: 
+        value = float(metric_fn()) 
+        if np.isfinite(value):
+            return value
+
+        logger.warning("%s returned NaN/Inf.", metric_name) 
+    except Exception:
+        logger.exception("%s computation failed.", metric_name)
+
+    return np.nan
+
 ############################################# Evaluation of Trained method  #################################################################
 
-
-def Evaluation(model, train_time, train_status, X_test, test_time, test_status, evaltime, discretiser, device: str = ''):
+def Evaluation(model, train_time, train_status, X_test, test_time, test_status, evaltime, discretiser, device="cpu"):
     """
-    Attributes:
-    ----------
-        model: Trained DeepPseudo Model
-
-        train_time: Training time array
-        train_status: Training status array
-
-        X_test: Covariates in test set
-        test_time: Event status array for test set
-        test_status: Observed times array for test set
-
-        evaltime: Prespecified evaluation times
-        discretizer: object for discretizing time
-        device: string for cpu or gpu indicator
+    Evaluate a trained survival model using discrimination, calibration,
+    and prediction-error metrics.
 
     Returns
     -------
-        Time-dependent C-index, Integrated Brier Score and Integrated nbll score
+    cindex, brier, nbll, p_value, weighted_MAE_PO
     """
 
     model.eval()
     model.to(device)
 
-    # Predict the survival probability for test set
-    sp_test = predict_surv(model, torch.tensor(X_test).to(device))
+    # Predict survival probabilities
+    X_test_tensor = torch.as_tensor(X_test, dtype=torch.float32, device=device)
+    sp_test = predict_surv(model, X_test_tensor)
     surv = surv_const_pdf_df(sp_test, discretiser.cuts)
-    
-    # EvalSurv function from pycox package.
-    ev = EvalSurv(surv, test_time, test_status, censor_surv='km')
 
-    # time-dependent concordance index.
-    try:
-        cindex = ev.concordance_td()
-        if not np.isfinite(cindex):
-            print("[C-index WARNING] NaN/Inf returned.")
-            cindex = np.nan
-    except Exception as e:
-        print(f"[C-index ERROR] {type(e).__name__}: {e}")
-        cindex = np.nan
+    # PyCox evaluation
+    ev = EvalSurv(surv, test_time, test_status, censor_surv="km")
 
-    # integrated brier score computation.
-    try:
-        brier = ev.integrated_brier_score(evaltime)
-        if not np.isfinite(brier):
-            print("[C-index WARNING] NaN/Inf returned.")
-            brier = np.nan
-    except Exception as e:
-        print(f"[Brier ERROR] {type(e).__name__}: {e}")
-        brier = np.nan
+    cindex = safe_metric("C-index", ev.concordance_td)
+    brier = safe_metric("Integrated Brier Score", lambda: ev.integrated_brier_score(evaltime))
+    nbll = safe_metric("Integrated NBLL", lambda: ev.integrated_nbll(evaltime))
 
-    # integrated brier score computation.
-    try:
-        nbll = ev.integrated_nbll(evaltime)
-        if not np.isfinite(nbll):
-            print("[C-index WARNING] NaN/Inf returned.")
-            nbll = np.nan
-    except Exception as e:
-        print(f"[Brier ERROR] {type(e).__name__}: {e}")
-        nbll = np.nan
-
-    # --- SurvivalEvaluator (SurvivalEval) ---
+    # SurvivalEVAL metrics
     p_value = np.nan
     weighted_MAE_PO = np.nan
 
     try:
-        test_time_arr = np.asarray(test_time,   dtype=float)
+        test_time_arr = np.asarray(test_time, dtype=float)
         test_status_arr = np.asarray(test_status, dtype=float)
-        train_time_arr = np.asarray(train_time,  dtype=float)
+        train_time_arr = np.asarray(train_time, dtype=float)
         train_status_arr = np.asarray(train_status, dtype=float)
-        evaltime_arr = np.asarray(evaltime,    dtype=float)
+        evaltime_arr = np.asarray(evaltime, dtype=float)
 
-        surv_interp = pd.DataFrame(
-            index=evaltime_arr,
-            columns=surv.columns,
-            dtype=float
-        )
+        surv_interp = pd.DataFrame(index=evaltime_arr, columns=surv.columns, dtype=float)
 
         for t in evaltime_arr:
-            idx = surv.index.searchsorted(t, side='right') - 1
+            idx = surv.index.searchsorted(t, side="right") - 1
             idx = max(0, min(idx, len(surv.index) - 1))
             surv_interp.loc[t] = surv.iloc[idx].values
 
-        from SurvivalEVAL.Evaluator import SurvivalEvaluator
-        # Transpose to (n_samples, n_eval_times)
         surv_for_eval = surv_interp.values.T.astype(float)
 
         evaluator = SurvivalEvaluator(
-            surv_for_eval,    # (n_samples, n_eval_times)
-            evaltime_arr,     # (n_eval_times,)
-            test_time_arr,    # (n_samples,)
-            test_status_arr,  # (n_samples,)
-            train_time_arr,   # (n_train_samples,)
-            train_status_arr,  # (n_train_samples,)
+            surv_for_eval,
+            evaltime_arr,
+            test_time_arr,
+            test_status_arr,
+            train_time_arr,
+            train_status_arr
         )
 
-        # --- D-Calibration ---
-        try:
-            p_val_result, _ = evaluator.d_calibration()
-            p_value = float(p_val_result) if np.isfinite(
-                p_val_result) else np.nan
-        except Exception as e:
-            print(f"[D-Calibration WARNING] {e}")
+        p_value = safe_metric("D-Calibration", lambda: evaluator.d_calibration()[0])
+        weighted_MAE_PO = safe_metric("Weighted MAE PO", lambda: evaluator.mae(method="Pseudo_obs", weighted=True))
 
-        # --- Weighted Pseudo-Observation MAE ---
-        try:
-            mae_result = evaluator.mae(method='Pseudo_obs', weighted=True)
-            weighted_MAE_PO = float(mae_result) if np.isfinite(
-                mae_result) else np.nan
-        except Exception as e:
-            print(f"[Weighted MAE WARNING] {e}")
+    except Exception:
+        logger.exception("SurvivalEvaluator initialization failed.")
 
-    except Exception as e:
-        # FIX 3: Use traceback instead of print(..., exc_info=True)
-        import traceback
-        print(f"[SurvivalEvaluator] Failed to initialize: {e}")
-        traceback.print_exc()
-
-    print(
-        f"[Evaluation] cindex={cindex:.4f}, brier={brier:.4f}, nbll={nbll:.4f}, "
-        f"p_value={p_value}, weighted_MAE_PO={weighted_MAE_PO}"
+    logger.info(
+        "Evaluation | C-index: %s | Brier: %s | NBLL: %s | D-calibration: %s | Weighted MAE PO: %s",
+        cindex, brier, nbll, p_value, weighted_MAE_PO
     )
 
-    return cindex, brier, nbll, p_value, weighted_MAE_PO
+    return cindex, brier, nbll, p_value, weighted_MAE_PO 
+  
+  # SurvivalEvaluator
      
