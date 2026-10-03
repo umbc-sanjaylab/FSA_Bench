@@ -81,14 +81,19 @@ Each experiment is specified using:
 - **Dataset name**
 - **Run ID / cross-validation fold**
 
-All commands should be executed from the repository root. You can run centralized or federated experiments using:
+All commands should be executed from the repository root. You can run centralized experiment using:
 
 ```bash
 # Centralized Learning
 bash scripts/run_cl.sh <model> <dataset> <run_id>
+```
 
+For running federated experiments, use this command: 
+
+```bash
 # Federated Learning
 bash scripts/run_fl.sh <model> <dataset> <run_id>
+```
 
 ## Dataset
 
