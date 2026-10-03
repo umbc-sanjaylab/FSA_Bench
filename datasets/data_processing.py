@@ -14,7 +14,7 @@ class SurvivalSplit:
 @dataclass
 class ClientSurvivalData:
     client_id: int
-    client_name: str
+    client_name: str                       
 
     train: SurvivalSplit
     val: SurvivalSplit

@@ -71,69 +71,24 @@ pandas==1.3.5
 numpy==1.24.3
 ``` 
 
-##  Running Experiments
+## Running Experiments
 
-The shell scripts in FSA-Bench framework are in the `scripts/` directory to reproduce the centralized and federated experiments.  From the repository root, we can execute any script as:
+FSA-Bench provides unified shell scripts for running centralized learning (CL) and federated learning (FL) experiments. The scripts are available in the `scripts/` directory.
+
+Each experiment is specified using:
+
+- **Model name**
+- **Dataset name**
+- **Run ID / cross-validation fold**
+
+All commands should be executed from the repository root. You can run centralized or federated experiments using:
 
 ```bash
-bash scripts/<script_name>.sh 
-```
+# Centralized Learning
+bash scripts/run_cl.sh <model> <dataset> <run_id>
 
-### Centralized Learning
-
-The centralized experiments can be executed using the following scripts:
-
-| Model | Command |
-| --- | --- |
-| AFT-Weibull | `bash scripts/AFT_Weibull_CL.sh` |
-| DeepHit | `bash scripts/DeepHit_CL.sh` |
-| DeepPseudo | `bash scripts/DeepPseudo_CL.sh` |
-| Fed. CoxPH | `bash scripts/Fed_CoxPH_CL.sh` |
-| Fed. Kaplan-Meier | `bash scripts/Fed_KM_CL.sh` |
-| FedPDNN | `bash scripts/FedPseudo_CL.sh` |
-| FedPLSTM | `bash scripts/FedPseudo_CL.sh` |
-| FedPAttn | `bash scripts/FedPseudo_CL.sh` |
-| LinearPH | `bash scripts/LinearPH_NNph_CL.sh` |
-| NNPH | `bash scripts/LinearPH_NNph_CL.sh` |
-| NNnPH | `bash scripts/NNnPH_CL.sh` |
-
-### Federated Learning
-
-The federated experiments can be executed using the following scripts:
-
-| Model | Command |
-| --- | --- |
-| AFT-Weibull | `bash scripts/AFT_Weibull_FL.sh` |
-| DeepHit | `bash scripts/DeepHit_FL.sh` |
-| DeepPseudo | `bash scripts/DeepPseudo_FL.sh` |
-| Fed. CoxPH | `bash scripts/Fed_CoxPH_FL.sh` |
-| Fed. Kaplan-Meier | `bash scripts/Fed_KM_FL.sh` |
-| FedPDNN | `bash scripts/FedPseudo_FL.sh` |
-| FedPLSTM | `bash scripts/FedPseudo_FL.sh` |
-| FedPAttn | `bash scripts/FedPseudo_FL.sh` |
-| LinearPH | `bash scripts/LinearPH_NNPH_FL.sh` |
-| NNPH | `bash scripts/LinearPH_NNPH_FL.sh` |
-| NNnPH | `bash scripts/NNnPH_FL.sh` |
-
-### Common Training Configuration
-
-The deep-learning-based survival models use the following common experimental settings unless otherwise specified in the corresponding shell script:
-
-| Parameter | Value |
-| --- | --- |
-| Optimizer | Adam |
-| Learning rate | `1e-3` |
-| Maximum epochs | `250` |
-| Weight regularization | `5e-5` |
-| Dropout | `0.05` |
-| Early-stopping patience | `25` |
-| Client participation | `1.0` |
-| Initialization seed | `5` |
-| FL aggregation | FedAvg |
-| FL communication rounds | `50` |
-
-Model-specific and dataset-specific parameters are defined in the corresponding scripts in the `scripts/` directory.
-
+# Federated Learning
+bash scripts/run_fl.sh <model> <dataset> <run_id>
 
 ## Dataset
 

@@ -3,9 +3,9 @@ set -euo pipefail
 export CUDA_VISIBLE_DEVICES=1  
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
-DATADIR="${REPO_ROOT}/datasets/processed_data/federated_data"
-LOGROOT="${REPO_ROOT}/NNnPH/logs/federated_data/centralized"
-MODELDIR_ROOT="${REPO_ROOT}/NNnPH/models/federated_data/centralized"
+DATADIR="${REPO_ROOT}/datasets/processed_data/"
+LOGROOT="${REPO_ROOT}/NNnPH/logs/CL"
+MODELDIR_ROOT="${REPO_ROOT}/NNnPH/models/CL"
 
 mkdir -p "$LOGROOT" "$MODELDIR_ROOT"     
 
