@@ -126,7 +126,7 @@ For example, to model Pbc3 dataset using NNnPH model, we can use this:
 | --- | --- | --- |
 | `<model>` | Specifies the survival model used for the experiment. | `FedPDNN`, `FedPLSTM`, `FedPAttn`<br>`AFT_Weibull`, `Fed_CoxPH`, `DeepPseudo`<br>`DeepHit`, `LinearPH`, `NNPH`, `NNnPH` |
 
-### Supported Datasets
+### Supported Dataset
 
 | Argument | Description | Possible Values |
 | --- | --- | --- |
