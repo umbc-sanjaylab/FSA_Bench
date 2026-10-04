@@ -11,5 +11,4 @@ python experiments.py \
     --setting CL \
     --model "$MODEL" \
     --dataset "$DATASET" \
-    --run_id "$RUN_ID" \
     --device cuda:0

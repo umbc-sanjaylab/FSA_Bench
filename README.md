@@ -118,7 +118,19 @@ For example, to model Pbc3 dataset using NNnPH model, we can use this:
 ```bash
 .\scripts\run_CL.ps1 NNnPH Pbc3
 .\scripts\run_FL.ps1 NNnPH Pbc3
-```
+``` 
+
+### Supported Models
+
+| Argument | Description | Possible Values |
+| --- | --- | --- |
+| `<model>` | Specifies the survival model used for the experiment. | `FedPDNN`, `FedPLSTM`, `FedPAttn`<br>`AFT_Weibull`, `Fed_CoxPH`, `DeepPseudo`<br>`DeepHit`, `LinearPH`, `NNPH`, `NNnPH` |
+
+### Supported Datasets
+
+| Argument | Description | Possible Values |
+| --- | --- | --- |
+| `<dataset>` | Specifies the survival dataset used for the experiment. | `TCGA`, `Aids2`, `LeukSurv`, `Pbc3`<br>`d.oropha.rec`, `cgd`, `uis`, `scania`<br>`seer`, `Dialysis` |
 
 ## Dataset
 

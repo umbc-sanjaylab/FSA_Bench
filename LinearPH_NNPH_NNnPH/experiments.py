@@ -46,10 +46,8 @@ if __name__ == "__main__":
         logger = create_experiment_logger(args.logdir, args.setting, args.model, args.dataset, args.run_id) 
         logger.info("Running %s experiment | Model: %s | Dataset: %s | Fold: %d/%d", args.setting, args.model, args.dataset, fold + 1, num_folds)
 
-        # Load preprocessed data for both CL & FL
-        data = prepare_survival_data(args)
-
-        # Evaluation time points
+        # Load preprocessed data and evaluation time for both CL & FL
+        data = prepare_survival_data(args) 
         eval_times = compute_eval_times(data, interval=args.pseudo_perc_interval)
         input_size = len(data.feature_names)
 
@@ -60,6 +58,4 @@ if __name__ == "__main__":
         else:
             results = run_federated(model=model, clients=data.clients, eval_times=eval_times, args=args)
 
-        logger.info("Fold %d results: %s", fold, results)
- 
-
+        logger.info("Fold %d results: %s", fold, results) 
