@@ -124,13 +124,13 @@ For example, to model Pbc3 dataset using NNnPH model, we can use this:
 
 | Argument | Description | Possible Values |
 | --- | --- | --- |
-| `<model>` | Specifies the survival model used for the experiment. | `FedPDNN`, `FedPLSTM`, `FedPAttn`<br>`AFT_Weibull`, `Fed_CoxPH`, `DeepPseudo`<br>`DeepHit`, `LinearPH`, `NNPH`, `NNnPH` |
+| `<model>` | Specifies the survival model<br> used for the experiment. | `Fed. KM`, `AFT_Weibull`, `Fed_CoxPH`, `DeepPseudo`, `DeepHit`, <br> `LinearPH`, `NNPH`, `NNnPH`,  `FedPDNN`, `FedPLSTM`, `FedPAttn`|
 
 ### Supported Dataset
 
 | Argument | Description | Possible Values |
 | --- | --- | --- |
-| `<dataset>` | Specifies the survival dataset used for the experiment. | `TCGA`, `Aids2`, `LeukSurv`, `Pbc3`<br>`d.oropha.rec`, `cgd`, `uis`, `scania`<br>`seer`, `Dialysis` |
+| `<dataset>` | Specifies the survival dataset<br> used for the experiment. | `TCGA`, `Aids2`, `LeukSurv`, `Pbc3`, `d.oropha.rec`,<br> `cgd`, `uis`, `scania`, `seer`, `Dialysis` |
 
 ## Dataset
 
@@ -162,9 +162,9 @@ Each interpretability experiment requires a dataset name specified using the `-d
 
 ### Command Arguments
 
-| Argument / Option | Description | Possible Values |
+| Argument | Description | Possible Values |
 | --- | --- | --- |
-| `-d`, `--dataset` | Specifies the dataset used for the interpretability experiment. | `seer`, `Pbc3`, `LeukSurv`<br>`cgd`, `scania`, `uis`<br>`d.oropha.rec`, `Dialysis`, `Aids2` |
+| `-d`, `--dataset` | Specifies the dataset used<br> for the interpretability experiment. | `TCGA`, `Aids2`, `LeukSurv`, `Pbc3`, `d.oropha.rec`,<br> `cgd`, `uis`, `scania`, `seer`, `Dialysis` |
 
 For detailed information about these datasets, see the [Dataset](#dataset) section.
 
