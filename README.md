@@ -156,42 +156,40 @@ The number of cross-validation folds, federated clients, and batch sizes vary ac
  
 ## Interpretability
 
-The interpretability scripts are available in the `interpretability/` directory.
+FSA-Bench provides fold-level, site-level, and partition-level interpretability analyses. The corresponding modules are available in the `interpretability/` directory.
 
-From the repository root:
+Each interpretability experiment requires a dataset name specified using the `-d` or `--dataset` argument.
 
-```bash
-cd interpretability
-```
+### Command Arguments
+
+| Argument / Option | Description | Possible Values |
+| --- | --- | --- |
+| `-d`, `--dataset` | Specifies the dataset used for the interpretability experiment. | `seer`, `Pbc3`, `LeukSurv`<br>`cgd`, `scania`, `uis`<br>`d.oropha.rec`, `Dialysis`, `Aids2` |
+
+For detailed information about these datasets, see the [Dataset](#dataset) section.
 
 ### Fold-Level Interpretation
 
 ```bash
-python fold_level.py
+python -m interpretability.fold_level -d <dataset>
 ```
 
 ### Site-Level Interpretation
 
 ```bash
-python site_level.py
+python -m interpretability.site_level -d <dataset>
 ```
 
 ### Partition-Level Interpretation
 
 ```bash
-python CL_vs_FL.py
+python -m interpretability.CL_vs_FL -d <dataset>
 ```
-
-### Command Arguments
-
-| Argument / Option | Description |
-| --- | --- |
-| `-d <dataset_name>` | Specifies the dataset name used for the interpretability experiment. |
-
-For example, this command runs the fold-level interpretability script using dataset name `seer`. 
+ 
+For example, this command runs the fold-level interpretability analysis on the seer dataset:
 
 ```bash
-python fold_level.py -d seer
+python -m interpretability.fold_level -d seer
 ```  
 
  
