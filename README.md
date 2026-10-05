@@ -71,6 +71,39 @@ pandas==1.3.5
 numpy==1.24.3
 ``` 
 
+
+## Dataset
+
+The number of cross-validation folds, federated clients, and batch sizes vary across datasets.
+
+### Dataset Summary
+
+| Dataset | Samples | Variables | Event (%) | Censoring (%) | # Clients | Data Link |
+| --- | ---: | ---: | ---: | ---: | ---: | --- |
+| [TCGA](https://www.cancer.gov/ccg/research/genome-sequencing/tcga) | 6,084 | 283 | 30.50 | 69.50 | 7 | [TCGA Hub](https://xenabrowser.net/datapages/?hub=https://tcga.xenahubs.net:443) |
+| [Aids2](https://rdrr.io/cran/MASS/man/Aids2.html) | 2,839 | 3 | 62.03 | 37.97 | 4 | [SurvSet](https://github.com/ErikinBC/SurvSet) |
+| [LeukSurv](https://rdrr.io/cran/spBayesSurv/man/LeukSurv.html) | 1,043 | 4 | 84.28 | 15.72 | 24 | [SurvSet](https://github.com/ErikinBC/SurvSet) |
+| [Pbc3](https://www.rdocumentation.org/packages/pec/versions/2025.06.24/topics/Pbc3) | 349 | 12 | 17.48 | 82.52 | 6 | [SurvSet](https://github.com/ErikinBC/SurvSet) |
+| [Dialysis](https://rdrr.io/cran/RcmdrPlugin.survival/man/Dialysis.html) | 6,805 | 2 | 23.56 | 76.44 | 67 | [SurvSet](https://github.com/ErikinBC/SurvSetl) |
+| [Oropharyngeal Carcinoma](https://rdrr.io/cran/invGauss/man/d.oropha.rec.html) | 192 | 12 | 72.40 | 27.60 | 6 | [SurvSet](https://github.com/ErikinBC/SurvSet) |
+| [cgd](https://rdrr.io/cran/survival/man/cgd.html) | 128 | 8 | 34.38 | 65.62 | 4 | [SurvSet](https://github.com/ErikinBC/SurvSet) |
+| [uis](https://github.com/graemeleehickey/hosmer-lemeshow/blob/master/edition2/uis.txt) | 628 | 7 | 80.89 | 19.11 | 2 | [SurvSet](https://github.com/ErikinBC/SurvSet) |
+| [scania](https://cran.r-project.org/web/packages/eha/refman/eha.html#scania) | 1,040 | 4 | 52.60 | 47.40 | 5 | [SurvSet](https://github.com/ErikinBC/SurvSet) |
+| [SEER](https://seer.cancer.gov/)  | 25,749 | 11 | 25.36 | 74.64 | 3 | [SEER](https://seer.cancer.gov/data/) |
+
+
+> Dataset availability and configuration may vary across individual model scripts. 
+ 
+ ## Dataset Preprocessing
+
+Before running the centralized or federated experiments, the datasets must be preprocessed and partitioned into the required train, validation, and test splits.
+
+The preprocessing pipeline is implemented in the `datasets/` module. From the repository root, run:
+
+```bash
+python -m datasets.prepare_datasets
+```
+
 ## Running Experiments
 
 FSA-Bench provides unified scripts for running centralized learning (CL) and federated learning (FL) experiments. The scripts are located in the repository root.
@@ -132,28 +165,6 @@ For example, to model Pbc3 dataset using NNnPH model, we can use this:
 | --- | --- | --- |
 | `<dataset>` | Specifies the survival dataset<br> used for the experiment. | `TCGA`, `Aids2`, `LeukSurv`, `Pbc3`, `d.oropha.rec`,<br> `cgd`, `uis`, `scania`, `seer`, `Dialysis` |
 
-## Dataset
-
-The number of cross-validation folds, federated clients, and batch sizes vary across datasets.
-
-### Dataset Summary
-
-| Dataset | Samples | Variables | Event (%) | Censoring (%) | # Clients | Data Link |
-| --- | ---: | ---: | ---: | ---: | ---: | --- |
-| [TCGA](https://www.cancer.gov/ccg/research/genome-sequencing/tcga) | 6,084 | 283 | 30.50 | 69.50 | 7 | [TCGA Hub](https://xenabrowser.net/datapages/?hub=https://tcga.xenahubs.net:443) |
-| [Aids2](https://rdrr.io/cran/MASS/man/Aids2.html) | 2,839 | 3 | 62.03 | 37.97 | 4 | [SurvSet](https://github.com/ErikinBC/SurvSet) |
-| [LeukSurv](https://rdrr.io/cran/spBayesSurv/man/LeukSurv.html) | 1,043 | 4 | 84.28 | 15.72 | 24 | [SurvSet](https://github.com/ErikinBC/SurvSet) |
-| [Pbc3](https://www.rdocumentation.org/packages/pec/versions/2025.06.24/topics/Pbc3) | 349 | 12 | 17.48 | 82.52 | 6 | [SurvSet](https://github.com/ErikinBC/SurvSet) |
-| [Dialysis](https://rdrr.io/cran/RcmdrPlugin.survival/man/Dialysis.html) | 6,805 | 2 | 23.56 | 76.44 | 67 | [SurvSet](https://github.com/ErikinBC/SurvSetl) |
-| [Oropharyngeal Carcinoma](https://rdrr.io/cran/invGauss/man/d.oropha.rec.html) | 192 | 12 | 72.40 | 27.60 | 6 | [SurvSet](https://github.com/ErikinBC/SurvSet) |
-| [cgd](https://rdrr.io/cran/survival/man/cgd.html) | 128 | 8 | 34.38 | 65.62 | 4 | [SurvSet](https://github.com/ErikinBC/SurvSet) |
-| [uis](https://github.com/graemeleehickey/hosmer-lemeshow/blob/master/edition2/uis.txt) | 628 | 7 | 80.89 | 19.11 | 2 | [SurvSet](https://github.com/ErikinBC/SurvSet) |
-| [scania](https://cran.r-project.org/web/packages/eha/refman/eha.html#scania) | 1,040 | 4 | 52.60 | 47.40 | 5 | [SurvSet](https://github.com/ErikinBC/SurvSet) |
-| [SEER](https://seer.cancer.gov/)  | 25,749 | 11 | 25.36 | 74.64 | 3 | [SEER](https://seer.cancer.gov/data/) |
-
-
-> Dataset availability and configuration may vary across individual model scripts. 
- 
 ## Interpretability
 
 FSA-Bench provides fold-level, site-level, and partition-level interpretability analyses. The corresponding modules are available in the `interpretability/` directory.
