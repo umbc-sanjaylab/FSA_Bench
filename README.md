@@ -7,7 +7,7 @@
  
 ## Overview
 
-Paper • Installation • Required Packages • Running Experiments • Datasets • Evaluation Metrics • Experimental Settings • How to Cite
+Paper • Installation • Requirements • Dataset • Dataset Preprocessing • Running Experiments • Interpretability • License
 
 ## Paper
 
