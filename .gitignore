@@ -11,7 +11,7 @@ workdir/
 pickles/   
 *.bak
 .vscode/
-
+processed_data/  
 
 ################################################### Keep interpretability experiment logs ###################################################
 !interpretability/log/

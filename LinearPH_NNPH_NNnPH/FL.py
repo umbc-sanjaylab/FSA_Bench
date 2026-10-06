@@ -1,8 +1,9 @@
-import numpy as np  
-from client.client import train_local_client, evaluate_global_model_on_clients 
-from client.utils import Discretiser 
-from server.server import aggregate_fedavg  
-from server.utils import EarlyStopping 
+import numpy as np
+
+from .client.client import train_local_client, evaluate_global_model_on_clients
+from .client.utils import Discretiser
+from .server.server import aggregate_fedavg
+from .server.utils import EarlyStopping
 
 import logging 
 logger = logging.getLogger("experiment")

@@ -131,7 +131,7 @@ def train(dataloader, model, loss_fn, optimizer, device1: str = 'cpu'):
  
 ############################# Evaluate the model ########################################
 
-def evaluate(dataloader, model, loss_fn, device: str = 'cpu'):
+def validate(dataloader, model, loss_fn, device: str = 'cpu'):
 
     num_batches = len(dataloader)
     model.eval()

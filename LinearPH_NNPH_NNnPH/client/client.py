@@ -1,9 +1,11 @@
-from scipy.stats import combine_pvalues
+from copy import deepcopy
+
 import numpy as np
 import torch
-from copy import deepcopy
-from utils import prepare_client_dataloaders, build_optimizer, train_epoch, validation_loss
-from utils import Concordance, Evaluation 
+from scipy.stats import combine_pvalues
+
+from .utils import prepare_client_dataloaders, build_optimizer, Concordance, Evaluation
+from ..model import train, validate
 
 ################  Logger Initialization  ################################# 
 
@@ -13,8 +15,7 @@ logger = logging.getLogger("experiment")
 ################  Finite Metric Check  ################################# 
 
 def is_finite_metric(value):
-    return value is not None and np.isscalar(value) and np.isfinite(float(value))  
-
+    return value is not None and np.isscalar(value) and np.isfinite(float(value))   
 
 ################  Training NNnPH Model with "FedAvg" framework in Local Client  ################################# 
 
@@ -37,8 +38,8 @@ def train_local_client( global_model, client, discretiser, args):
     X_val = torch.as_tensor( client.val.X, dtype=torch.float32, device=device)
 
     for epoch in range(args.epochs): 
-        train_loss = train_epoch(train_loader, local_model, optimizer, device) 
-        val_loss = validation_loss( val_loader, local_model, device)
+        train_loss = train(train_loader, local_model, optimizer, device) 
+        val_loss = validate(val_loader, local_model, device)
 
         if  val_loss is not None and np.isfinite(val_loss):
             scheduler.step(val_loss)

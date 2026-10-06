@@ -4,9 +4,8 @@ from .data_loader import load_raw_dataset, dataset_properties
      
 import pandas as pd, numpy as np, os
 from config import PROCESSED_DATA_DIR, DATASET_CONFIG 
-from utils import five_fold_cross_validation, three_fold_cross_validation
-from utils import _save_split, normalize_train_val_test_data     
- 
+from .utils import five_fold_cross_validation, three_fold_cross_validation
+from .utils import _save_split, normalize_train_val_test_data      
  
 ############################### Federated Partitions among clients with folds ###############################################################   
 def federated_partition_with_fold(dataframe, dataset_name, region_column, n_folds, dict_center_idxs, global_cats_dict, bin_cols_name, multi_cols_name):
@@ -64,8 +63,8 @@ def federated_partition_with_fold(dataframe, dataset_name, region_column, n_fold
           val_data = client_data.loc[val_idxs].drop(columns=region_column, errors="ignore")
           test_data = client_data.loc[test_idxs].drop(columns=region_column, errors="ignore") 
           
-          # Normalize and save the client-wise train/val/test splits  
-          dataset_directory = processed_dataset_directory / str(center_id) / str(run_id)
+          # Normalize and save the client-wise train/val/test splits   
+          dataset_directory = processed_dataset_directory /  "FL" / str(center_id) / str(run_id)
           scaled_train_data, scaled_val_data, scaled_test_data = normalize_train_val_test_data(train_data.copy(), val_data.copy(), test_data.copy())
           _save_split(scaled_train_data, scaled_val_data, scaled_test_data, dataset_directory, global_cats_dict, bin_cols_name, multi_cols_name)  
           
@@ -94,7 +93,7 @@ def federated_partition_with_fold(dataframe, dataset_name, region_column, n_fold
       pd_test_data = pd.concat(pd_test).reset_index(drop=True)
       
       # Normalize and save the centralized train/val/test splits 
-      dataset_directory = f"{processed_dataset_directory}/{center_id}/{run_id}"
+      dataset_directory = f"{processed_dataset_directory}/CL/0/{run_id}"
       scaled_pd_train_data, scaled_pd_val_data, scaled_pd_test_data = normalize_train_val_test_data(pd_train_data.copy(),  pd_val_data.copy(), pd_test_data.copy())
       _save_split(scaled_pd_train_data, scaled_pd_val_data, scaled_pd_test_data, dataset_directory, global_cats_dict, bin_cols_name, multi_cols_name) 
        

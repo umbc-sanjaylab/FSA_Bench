@@ -1,34 +1,34 @@
-import json   
-from model import *   
-from server.utils import create_experiment_logger, get_args
-from datasets.data_processing import prepare_survival_data,  compute_eval_times 
-from model import init_net 
-from server.utils import mkdirs
-from CL import train_centralized
-from FL import run_federated 
-from config import DATASET_CONFIG
-from pathlib import Path    
+import json
+from pathlib import Path
+
+from config import DATASET_CONFIG, get_args
+from datasets.data_processing import prepare_survival_data, compute_eval_times
+
+from .model import init_net
+from .CL import train_centralized
+from .FL import run_federated
+from .server.utils import create_experiment_logger, mkdirs
   
 ######################################################## Main Experiment ########################################################
 
 if __name__ == "__main__":
     args = get_args() 
-    if args.setting not in ["CL", "FL"]:
-        raise ValueError(f"Unsupported setting: {args.setting}")
+    if args.partition not in ["CL", "FL"]:
+        raise ValueError(f"Unsupported partition: {args.partition}")
 
     if args.dataset not in DATASET_CONFIG:
         raise ValueError(f"Unsupported dataset: {args.dataset}")
 
     # Dataset-specific configuration
     dataset_config = DATASET_CONFIG[args.dataset]
-    args.n_parties = dataset_config["n_parties"]
+    args.n_parties = dataset_config["n_clients"]
     args.batch_size = dataset_config["batch_size"]
-    num_folds = dataset_config["folds"]
+    num_folds = dataset_config["n_folds"]
 
     # Output directories
     project_root = Path(__file__).resolve().parent
-    args.logdir = str(project_root / "results" / "logs" / args.setting.lower() / args.dataset / args.model)
-    args.modeldir = str(project_root / "checkpoints" / args.setting.lower() / args.dataset / args.model)
+    args.logdir = str(project_root / "results" / "logs" / args.partition.lower() / args.dataset / args.model)
+    args.modeldir = str(project_root / "checkpoints" / args.partition.lower() / args.dataset / args.model)
 
     mkdirs(args.logdir)
     mkdirs(args.modeldir)
@@ -43,8 +43,8 @@ if __name__ == "__main__":
         args.run_id = fold
 
         # Configure logger for current fold
-        logger = create_experiment_logger(args.logdir, args.setting, args.model, args.dataset, args.run_id) 
-        logger.info("Running %s experiment | Model: %s | Dataset: %s | Fold: %d/%d", args.setting, args.model, args.dataset, fold + 1, num_folds)
+        logger = create_experiment_logger(args.logdir, args.partition, args.model, args.dataset, args.run_id) 
+        logger.info("Running %s experiment | Model: %s | Dataset: %s | Fold: %d/%d", args.partition, args.model, args.dataset, fold + 1, num_folds)
 
         # Load preprocessed data and evaluation time for both CL & FL
         data = prepare_survival_data(args) 
@@ -53,9 +53,9 @@ if __name__ == "__main__":
 
         # Initialize model and start experiment
         model = init_net(input_size, args) 
-        if args.setting == "CL":
+        if args.partition == "CL":
             results = train_centralized(model=model, data=data.centralized, eval_times=eval_times, args=args)
         else:
             results = run_federated(model=model, clients=data.clients, eval_times=eval_times, args=args)
 
-        logger.info("Fold %d results: %s", fold, results) 
+        logger.info("Fold %d results: %s", fold + 1, results) 

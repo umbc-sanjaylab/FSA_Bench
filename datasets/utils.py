@@ -1,7 +1,7 @@
 import os 
 import numpy as np  
-from preprocessing.missing_value import preprocess_missing
-from preprocessing.encoding import encode_with_schema 
+from .preprocessing.missing_value import preprocess_missing
+from .preprocessing.encoding import encode_with_schema 
 from sklearn.model_selection import StratifiedKFold, KFold, train_test_split
 import pandas as pd
 from sklearn.preprocessing import StandardScaler 
@@ -101,22 +101,7 @@ def three_fold_cross_validation(dataset_name, data, no_of_fold, run_id):
     else:
         train_idx, val_idx = train_test_split( train_val_idx,  test_size=val_size,  random_state=1234,  shuffle=True,  stratify=None)
 
-    return train_idx, val_idx, test_idx
-     
-
-################################################## Split Train/Val/Test data into 5 folds ##########################################
-
-def _partition_split(split_data, partition, n_parties, seed_no, column=None):
-    """
-    Arguments: 
-          Partition a given split: train / val / test.
-    Returns 
-          dict: client_id -> row indices relative to split_data
-    """
-    if partition == "federated":
-        return federated_partition(split_data, n_parties, column)
-    else:
-        raise ValueError(f"Unknown partition: {partition}")
+    return train_idx, val_idx, test_idx 
 
 ################################################## save train/val/test split #################################################
 

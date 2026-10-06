@@ -1,8 +1,11 @@
-import numpy as np, torch, os   
-from model import * 
-from copy import deepcopy 
-from model import train_epoch, validation_loss 
-from client.utils import prepare_nnnph_dataloaders, build_optimizer, Concordance, Evaluation
+import os
+from copy import deepcopy
+
+import numpy as np
+import torch
+
+from .model import train, validate
+from .client.utils import prepare_nnnph_dataloaders, build_optimizer, Concordance, Evaluation
 
 ################  Training NNnPH Model with "Centralized" framework in Local Client  #################################
 
@@ -28,8 +31,8 @@ def train_centralized(model, data, eval_times, args):
 
     ################################################ Training ################################################# 
     for epoch in range(args.epochs): 
-        train_loss = train_epoch( train_loader, model, optimizer, device) 
-        val_loss = validation_loss(val_loader, model, device)
+        train_loss = train( train_loader, model, optimizer, device) 
+        val_loss = validate(val_loader, model, device)
 
         if np.isfinite(val_loss):
             scheduler.step(val_loss)

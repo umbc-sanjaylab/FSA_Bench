@@ -504,17 +504,8 @@ class DataBuilder(Dataset):
 
         self.X_covariates = None
         X_covariates_df = pd.DataFrame(X_covariates, columns=col_name) 
-        logger.info(f"Length of standardized columns: {len(features_for_standardization)}")
         
-        # if len(standardized_columns) != 0:
-        #     if scaler is None:
-        #         self.scaler = StandardScaler()
-        #         X_covariates_df[standardized_columns] = self.scaler.fit_transform( X_covariates_df[standardized_columns])
-        #     else:
-        #         self.scaler = scaler
-        #         X_covariates_df[standardized_columns] = self.scaler.transform( X_covariates_df[standardized_columns])
-        # else:
-        #     self.scaler = None
+        logger.info(f"Length of standardized columns: {len(features_for_standardization)}") 
         self.X_covariates = torch.from_numpy(X_covariates_df.to_numpy(dtype=np.float32))
 
     def __len__(self):
@@ -522,10 +513,7 @@ class DataBuilder(Dataset):
 
     def __getitem__(self, idx):
         return self.X_covariates[idx].float(), self.pseudo_values[idx].float()
-
-# dataset=args.dataset, in_features=in_features,out_features=out_features,  dropout=args.dropout_p, hidden_size=128, num_layers=2)
-
-
+ 
 def get_model_spec(args):
 
   # "FedPLSTM" "FedPAttn")
