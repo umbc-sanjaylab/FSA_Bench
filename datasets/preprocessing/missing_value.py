@@ -12,8 +12,13 @@ def knn_impute_numeric(train_data, val_data, test_data, n_neighbors=3, weights="
     if not num_cols:
         return train.reset_index(drop=True), val.reset_index(drop=True), test.reset_index(drop=True)
 
-    # Only select columns that actually have missing values
-    cols_with_nan = [col for col in num_cols if train[col].isna().any()]
+    # cols_with_nan = [col for col in num_cols if train[col].isna().any()]
+    
+    # Only select columns that actually have missing values    
+    cols_with_nan = [
+        col for col in num_cols
+        if train[col].isna().any() or val[col].isna().any() or test[col].isna().any()
+    ]
 
     # If no missing values → skip
     if not cols_with_nan:

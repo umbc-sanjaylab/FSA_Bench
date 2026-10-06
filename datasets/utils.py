@@ -1,8 +1,7 @@
 import os 
-import numpy as np 
-from partition import sample_iid, non_iid_skewed, federated_partition
-from preprocess.missing_value import preprocess_missing
-from preprocess.encoding import encode_with_schema, build_global_cat_schema 
+import numpy as np  
+from preprocessing.missing_value import preprocess_missing
+from preprocessing.encoding import encode_with_schema 
 from sklearn.model_selection import StratifiedKFold, KFold, train_test_split
 import pandas as pd
 from sklearn.preprocessing import StandardScaler 
@@ -103,121 +102,7 @@ def three_fold_cross_validation(dataset_name, data, no_of_fold, run_id):
         train_idx, val_idx = train_test_split( train_val_idx,  test_size=val_size,  random_state=1234,  shuffle=True,  stratify=None)
 
     return train_idx, val_idx, test_idx
-    
-    
-################################################## 5-Fold Split (Train/Val/Test) #################################################
-
-def make_k_fold_cross_validation(local_data, no_of_fold=5, run_id=0, val_ratio_for_3fold=0.2):
-    if no_of_fold not in (1, 3, 5):
-        raise ValueError(f"no_of_fold must be 1 or 3 or 5, got {no_of_fold}")
-
-    event_col = "event" if "event" in local_data.columns else "status"
-    status_data = np.asarray(
-        local_data[event_col], dtype="float32").reshape(-1).astype(int)
-    X_data = np.asarray(local_data.drop(columns=["time", event_col]))
-
-    def can_stratify_split(labels, split_size):
-        unique_labels, label_counts = np.unique(labels, return_counts=True)
-        n_classes = len(unique_labels)
-        remaining_size = len(labels) - split_size
-        return (
-            n_classes > 1
-            and label_counts.min() >= 2
-            and split_size >= n_classes
-            and remaining_size >= n_classes
-        )
-
-    # -------------------------------
-    # Case 1: single random split
-    # -------------------------------
-    if no_of_fold == 1:
-        indices = np.arange(len(local_data))
-        if len(indices) < 3:
-            return indices, np.array([], dtype=int), np.array([], dtype=int)
-
-        test_size = max(1, int(round(len(indices) * 0.2)))
-        test_size = min(test_size, len(indices) - 2)
-
-        can_stratify_test = can_stratify_split(status_data, test_size)
-        train_val_idx, test_idx = train_test_split(
-            indices, 
-            test_size=test_size,
-            random_state=1234,
-            shuffle=True,
-            stratify=status_data if can_stratify_test else None,
-        )
-
-        train_val_status = status_data[train_val_idx]
-        val_size = max(1, int(round(len(train_val_idx) * 0.25)))
-        val_size = min(val_size, len(train_val_idx) - 1)
-
-        can_stratify_val = can_stratify_split(train_val_status, val_size)
-        train_idx, val_idx = train_test_split(
-            train_val_idx,
-            test_size=val_size,
-            random_state=1234,
-            shuffle=True,
-            stratify=train_val_status if can_stratify_val else None,
-        )
-        return train_idx, val_idx, test_idx
- 
-    # Build folds for 3-fold / 5-fold 
-    unique, counts = np.unique(status_data, return_counts=True)
-    min_count = counts.min()
-    use_stratified = (len(unique) > 1) and (min_count >= no_of_fold)
-
-    fold_indices = []
-    if use_stratified:
-        splitter = StratifiedKFold(
-            n_splits=no_of_fold, shuffle=True, random_state=1234)
-        for _, fold_idx in splitter.split(X_data, status_data):
-            fold_indices.append(fold_idx)
-    else:
-        splitter = KFold(n_splits=no_of_fold, shuffle=True, random_state=1234)
-        for _, fold_idx in splitter.split(X_data):
-            fold_indices.append(fold_idx)
-
-    K = no_of_fold
-    test_fold = run_id % K
-
-    # -------------------------------
-    # Case 2: 5-fold rotating CV
-    # 3 train folds + 1 val fold + 1 test fold
-    # -------------------------------
-    if no_of_fold == 5:
-        val_fold = (run_id + 1) % K
-        train_folds = [i for i in range(K) if i not in (test_fold, val_fold)]
-
-        train_idx = np.concatenate([fold_indices[i] for i in train_folds])
-        val_idx = fold_indices[val_fold]
-        test_idx = fold_indices[test_fold]
-        return train_idx, val_idx, test_idx
-
-    # -------------------------------
-    # Case 3: 3-fold rotating CV
-    # 1 fold test + remaining 2 folds as train pool
-    # validation is split from the train pool
-    # -------------------------------
-    if no_of_fold == 3:
-        train_pool_folds = [i for i in range(K) if i != test_fold]
-        train_pool_idx = np.concatenate(
-            [fold_indices[i] for i in train_pool_folds])
-        test_idx = fold_indices[test_fold]
-
-        train_pool_status = status_data[train_pool_idx]
-
-        val_size = max(1, int(round(len(train_pool_idx) * val_ratio_for_3fold)))
-        val_size = min(val_size, len(train_pool_idx) - 1)
-
-        can_stratify_val = can_stratify_split(train_pool_status, val_size)
-        train_idx, val_idx = train_test_split(
-            train_pool_idx,
-            test_size=val_size,
-            random_state=1234 + run_id,  # slight variation across rotations
-            shuffle=True,
-            stratify=train_pool_status if can_stratify_val else None,
-        )
-        return train_idx, val_idx, test_idx
+     
 
 ################################################## Split Train/Val/Test data into 5 folds ##########################################
 
@@ -230,7 +115,6 @@ def _partition_split(split_data, partition, n_parties, seed_no, column=None):
     """
     if partition == "federated":
         return federated_partition(split_data, n_parties, column)
-
     else:
         raise ValueError(f"Unknown partition: {partition}")
 
@@ -291,97 +175,4 @@ def _save_split(train_data, val_data, test_data, out_dir,
 
     train_data.to_csv(f"{out_dir}/train.csv", index=False)
     val_data.to_csv(f"{out_dir}/val.csv", index=False)
-    test_data.to_csv(f"{out_dir}/test.csv", index=False)
-    
-################################################## highly correlated features #################################################
-
-def remove_highly_correlated_features(
-    train_df,
-    val_df,
-    test_df,
-    dataset_name,
-    run_id,
-    output_dir,
-    time_column="time",
-    event_column="event",
-    threshold=0.8,
-): 
-
-    os.makedirs(output_dir, exist_ok=True)
-
-    protected_cols = {time_column, event_column, "status"}
-
-    merged_df = pd.concat([train_df, val_df], axis=0, ignore_index=True)
-
-    # Only true continuous numerical features
-    num_features = [
-        col for col in merged_df.columns
-        if col.startswith("num_") and col not in protected_cols
-    ]
-
-    corr_df = merged_df[num_features].copy()
-
-    corr_matrix = corr_df.corr()
-    abs_corr_matrix = corr_matrix.abs()
-
-    upper_triangle = abs_corr_matrix.where(
-        np.triu(np.ones(abs_corr_matrix.shape), k=1).astype(bool)
-    )
-
-    high_corr_pairs = []
-    features_to_remove = set()
-
-    for col in upper_triangle.columns:
-        high_corr = upper_triangle[col][upper_triangle[col] > threshold]
-
-        for row, abs_corr_value in high_corr.items():
-            real_corr_value = corr_matrix.loc[row, col]
-            high_corr_pairs.append((row, col, real_corr_value))
-
-            # Keep the feature with fewer missing values
-            row_missing = merged_df[row].isna().mean()
-            col_missing = merged_df[col].isna().mean()
-
-            if row_missing <= col_missing:
-                features_to_remove.add(col)
-            else:
-                features_to_remove.add(row)
-
-    txt_path = os.path.join(
-        output_dir,
-        f"{dataset_name}_fold_{run_id}_correlated_features.txt"
-    )
-
-    with open(txt_path, "w") as txt_file:
-        txt_file.write(f"Dataset: {dataset_name}\n")
-        txt_file.write(f"Fold: {run_id}\n")
-        txt_file.write(f"Threshold: |corr| > {threshold}\n")
-        txt_file.write("Applied only to num_ continuous numerical features\n")
-        txt_file.write("=" * 70 + "\n\n")
-
-        if len(high_corr_pairs) == 0:
-            txt_file.write(f"No numerical feature pairs found with |corr| > {threshold}\n")
-        else:
-            txt_file.write(f"Numerical feature pairs with |corr| > {threshold}:\n\n")
-
-            for row, col, corr_value in high_corr_pairs:
-                txt_file.write(f"{row}  <-->  {col} : corr = {corr_value:.4f}\n")
-
-        txt_file.write("\nFeatures selected for removal:\n")
-        if len(features_to_remove) == 0:
-            txt_file.write("None\n")
-        else:
-            for feature in sorted(features_to_remove):
-                txt_file.write(f"{feature}\n")
-
-    train_df = train_df.drop(columns=list(features_to_remove), errors="ignore")
-    val_df = val_df.drop(columns=list(features_to_remove), errors="ignore")
-    test_df = test_df.drop(columns=list(features_to_remove), errors="ignore")
-
-    print(
-        f"Removed correlated numerical features for {dataset_name}, "
-        f"fold {run_id}: {sorted(features_to_remove)}"
-    )
-    print(f"Saved correlation report: {txt_path}")
-
-    return train_df, val_df, test_df
+    test_data.to_csv(f"{out_dir}/test.csv", index=False) 
