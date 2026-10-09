@@ -99,14 +99,18 @@ class EarlyStopping:
             self.early_stop = True
 
         return False
-
+    
     def save_checkpoint(self, param):
-        if param is not None:
-          return 
-        
-        os.makedirs(self.directory, exist_ok=True) 
-        torch.save({"model": param,  "discretizer": self.discretiser}, os.path.join( self.directory, self.checkpoint_pth))
+        if param is None:
+            return
 
+        os.makedirs(self.directory, exist_ok=True) 
+        torch.save({
+                "model": param,
+                "discretizer": self.discretiser
+            }, os.path.join(self.directory, self.checkpoint_pth))
+
+     
 
 #################################### Early Stopping Criteria ############################################################ 
 
@@ -139,36 +143,11 @@ def create_experiment_logger(logdir, setting, model, dataset, run_id):
 
     return logger
   
-#################################### Early Stopping Criteria ############################################################ 
+#################################### Make Directory ############################################################ 
 
 def mkdirs(dirpath):
     try:
         os.makedirs(dirpath)
     except Exception as _:
         pass
-      
-#################################### Store Experiment Result ############################################################ 
-
-def save_result(final_test_cidx, final_test_brier, final_test_nbll, final_test_p_value, final_test_weighted_MAE_PO, args):
-    row = {
-        "seed": args.init_seed,
-        "fold_id": int(args.run_id),
-        "dataset": args.dataset,
-        "partition": args.partition,
-        "model": args.model,
-        "c_idx": round(final_test_cidx, 4),
-        "brier": round(final_test_brier, 4),
-        "nbll": round(final_test_nbll, 4),
-        "p_value": round(final_test_p_value, 4),
-        "weighted_MAE_PO": round(final_test_weighted_MAE_PO, 4),
-        "lr": round(float(args.lr), 5),
-        "batch_size": int(args.batch_size),
-        "epochs": int(args.epochs),
-        "dropout": float(args.dropout_p),
-        "comm_round": int(args.comm_round)
-    }
-
-    df = pd.DataFrame([row])
-    csv_path = os.path.join(args.logdir, f"results_{args.model}.csv")
-    file_exists = os.path.exists(csv_path)
-    df.to_csv(csv_path, mode="a", header=not file_exists, index=False)
+   

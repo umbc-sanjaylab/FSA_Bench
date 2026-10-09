@@ -8,18 +8,11 @@ import nvflare.client as flare
 from nvflare.apis.fl_constant import FLMetaKey
 
 from config import get_args
-from models import MODEL_REGISTRY
+from models import MODEL_REGISTRY 
+from datasets.data_processing import  prepare_client_survival_data
 
-from datasets.data_processing import (
-    prepare_client_survival_data,
-)
-
-from federated.client import train_client
-
-from evaluation.metrics import (
-    compute_concordance,
-    evaluate_survival_predictions,
-)
+from federated.client import train_client 
+from evaluation.metrics import  compute_concordance, evaluate_survival_predictions
 
 
 def main(args): 

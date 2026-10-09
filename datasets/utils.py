@@ -2,11 +2,9 @@ import os
 import numpy as np  
 from .preprocessing.missing_value import preprocess_missing
 from .preprocessing.encoding import encode_with_schema 
-from sklearn.model_selection import StratifiedKFold, KFold, train_test_split
-import pandas as pd
+from sklearn.model_selection import StratifiedKFold, KFold, train_test_split 
 from sklearn.preprocessing import StandardScaler 
-from sklearn.model_selection import StratifiedKFold, KFold, train_test_split
-import numpy as np
+from sklearn.model_selection import StratifiedKFold, KFold, train_test_split 
 from collections import Counter
 
 ################################################## Five fold cross validation ############################################

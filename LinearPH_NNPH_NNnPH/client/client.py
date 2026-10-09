@@ -1,15 +1,15 @@
-from copy import deepcopy
+import numpy as np, torch
+from copy import deepcopy 
+from pathlib import Path
 
-import numpy as np
-import torch
-from scipy.stats import combine_pvalues
-
-from .utils import prepare_client_dataloaders, build_optimizer, Concordance, Evaluation
 from ..model import train, validate
+from scipy.stats import combine_pvalues
+from .utils import prepare_client_dataloaders, negative_llh 
+from .utils import build_optimizer, Concordance, Evaluation 
 
 ################  Logger Initialization  ################################# 
 
-import logging 
+import logging
 logger = logging.getLogger("experiment")
 
 ################  Finite Metric Check  ################################# 
@@ -24,7 +24,7 @@ def train_local_client( global_model, client, discretiser, args):
 
     # Each selected client starts from the current global model.
     local_model = deepcopy(global_model).to(device) 
-    train_loader, val_loader = prepare_client_dataloaders(client, discretiser, args)
+    train_loader, val_loader, discretiser = prepare_client_dataloaders(client, discretiser, args)
 
     optimizer = build_optimizer(local_model, args) 
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode="min", patience=args.patience) 
@@ -36,17 +36,17 @@ def train_local_client( global_model, client, discretiser, args):
     valid_val_metric_seen = False 
     has_val_events = np.any(client.val.event == 1) 
     X_val = torch.as_tensor( client.val.X, dtype=torch.float32, device=device)
-
+    loss_fn =  negative_llh   
+    
     for epoch in range(args.epochs): 
-        train_loss = train(train_loader, local_model, optimizer, device) 
-        val_loss = validate(val_loader, local_model, device)
+        train_loss = train(train_loader, local_model, loss_fn, optimizer, device)  
+        val_loss = validate(val_loader, local_model, loss_fn, device) 
 
         if  val_loss is not None and np.isfinite(val_loss):
             scheduler.step(val_loss)
 
         val_cindex = np.nan 
-        if has_val_events:
-
+        if has_val_events: 
             try:
                 val_cindex = Concordance( local_model, X_val, client.val.time, client.val.event, discretiser, device) 
             except Exception as exc:
@@ -70,7 +70,10 @@ def train_local_client( global_model, client, discretiser, args):
 
     # If C-index was never computable, use the final locally trained model.
     if not valid_val_metric_seen:
-        best_model_state = deepcopy(local_model.state_dict())
+        best_model_state = deepcopy(local_model.state_dict()) 
+        
+    model_file_name = Path(args.modeldir) / f"{args.model}_client_{client.client_id}_{args.run_id}.pt"
+    torch.save({"model": best_model_state, "discretizer": discretiser}, model_file_name)
 
     local_model.load_state_dict(best_model_state) 
     return local_model
@@ -88,6 +91,7 @@ def evaluate_global_model_on_clients( global_model, clients, eval_times, discret
     test_acc = {
         "cindex": [0.0, 0],
         "brier": [0.0, 0],
+        
         "nbll": [0.0, 0],
         "mae_po": [0.0, 0]
     }
@@ -96,7 +100,7 @@ def evaluate_global_model_on_clients( global_model, clients, eval_times, discret
     for client in clients: 
         
         if np.any(client.val.event == 1): 
-            X_val = torch.as_tensor(client.val.X, dtype=torch.float32)
+            X_val = torch.as_tensor(client.val.X, dtype=torch.float32, device=device)
 
             try:
                 val_cindex = Concordance( global_model, X_val, client.val.time, client.val.event, discretiser, device ) 

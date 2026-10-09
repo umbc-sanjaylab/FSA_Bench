@@ -12,8 +12,7 @@ def _clean_categories(values):
 def _prepare_categorical_frame(df, columns):
     prepared = df[columns].copy()
     for col in columns:
-        prepared[col] = prepared[col].where(
-            prepared[col].notna(), "__missing__")
+        prepared[col] = prepared[col].where(prepared[col].notna(), "__missing__")
     return prepared
 
 

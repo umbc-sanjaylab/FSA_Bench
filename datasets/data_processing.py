@@ -1,6 +1,4 @@
-import torch, pandas as pd,  numpy as np
-from torch.utils.data import Dataset
-
+import  pandas as pd,  numpy as np   
 from .data_loader import get_local_dataset, PROCESSED_DATA_DIR
 from .data_loader import SurvivalSplit,  ClientSurvivalData
 from .data_loader import PreparedSurvivalData, CentralizedSurvivalData 
@@ -41,16 +39,18 @@ def split_survival_dataframe(df):
     X = np.asarray( df.drop(columns=["time", "event"]), dtype=np.float32)
     time = np.asarray( df["time"], dtype=np.float32).reshape(-1)
     event = np.asarray( df["event"], dtype=np.int64).reshape(-1) 
-    return SurvivalSplit( X=X, time=time, event=event)
+    return SurvivalSplit(X=X, time=time, event=event)
 
 ############################################# Simple Method  ########################################################################## 
 
-def prepare_survival_data(args):
+def prepare_survival_data_and_time(args, client_id=None):
     clients = []
     feature_names = None
 
-    client_list = get_client_name_for_federated_datasets(args.dataset, args.n_parties)
-    
+    client_list = get_client_name_for_federated_datasets(args.dataset)
+    if client_id is not None:
+        client_list = [client_list[client_id]]
+      
     for client_id in client_list:
         train_df, val_df, test_df, client_name, current_features = get_local_dataset(args.dataset, "FL", client_id, args.run_id)
 
@@ -78,7 +78,9 @@ def prepare_survival_data(args):
         test=split_survival_dataframe(test_df)
     )
 
-    return PreparedSurvivalData(clients=clients, centralized=centralized, feature_names=feature_names)   
+    survival_data = PreparedSurvivalData(clients=clients, centralized=centralized, feature_names=feature_names) 
+    eval_times =    compute_eval_times(survival_data, interval=args.time_interval)
+    return survival_data, eval_times 
 
 ################################################## Evaluation Time Points ############################################
 
@@ -90,4 +92,3 @@ def compute_eval_times(data, interval=10):
 
     global_times = np.unique(np.concatenate(times))
     return np.percentile(  global_times, np.arange(interval, 99, interval))
-

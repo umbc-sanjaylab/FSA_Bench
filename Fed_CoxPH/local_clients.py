@@ -36,6 +36,8 @@ def train_net_all(net_id, model, X_train, y_train, val_data, epochs, lr, optimiz
     os.makedirs(args.modeldir, exist_ok=True)
     model_path = os.path.join(args.modeldir, f"{model_name}_{args.run_id}_{net_id}.pt")
     torch.save(net.net.state_dict(), model_path)
+    
+    
 
     # Compute baseline hazard
     test_cindex, test_brier, test_nbll, test_p_value, test_weighted_MAE_PO = Evaluation(net, train_time, train_status, X_train, y_train, X_test, test_time, test_status, evaltime, device)

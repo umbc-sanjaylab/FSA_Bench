@@ -1,8 +1,11 @@
 import numpy as np, traceback
+from torch import Tensor
+from SurvivalEVAL.Evaluator import SurvivalEvaluator 
 from lifelines import KaplanMeierFitter
 import torch, warnings    
 from torch.utils.data import DataLoader, TensorDataset   
 import pandas as pd  
+import torch.nn.functional as F 
 from pycox.evaluation import EvalSurv  
 from torch.utils.data import DataLoader, TensorDataset
 
@@ -35,9 +38,7 @@ def data_transform(y, discretiser, fit_transform=True):
   
 ##################################### Client training and validation data preparation ############################################ 
 
-def prepare_client_dataloaders(client, args):
-  
-    discretiser = Discretiser( args.num_duration, scheme="km") 
+def prepare_client_dataloaders(client, discretiser, args):  
     train_time_trans, train_event_trans = data_transform( ( client.train.time, client.train.event ), discretiser, fit_transform=False) 
     val_time_trans, val_event_trans = data_transform((client.val.time, client.val.event ), discretiser, fit_transform=False) 
 
@@ -78,10 +79,8 @@ def surv_const_pdf_df(s, cuts, sub=10):
   
 def predict_surv(model, input=None):
     hazard = model(input).sigmoid()
-    surv = (1 - hazard).log().cumsum(1).exp()
+    surv = (1 - hazard).log().cumsum(1).exp() 
     return surv.cpu().detach().numpy()
-  
- 
 
 ################################################## Discretizer ######################################################
 
@@ -129,7 +128,47 @@ class Discretiser():
         if self.cuts is None:
             raise ValueError("Need to call `fit` before this is accessible.")
         return len(self.cuts)  
+
+
+################################################## Negative Partial Log-likelihood Function ######################################################
+
+def negative_llh(phi: Tensor, idx_durations: Tensor, events: Tensor, reduction: str = 'mean') -> Tensor:
+    """
+    Arguments:
+        phi -- N x T. Estimates in (-inf, inf) where hazard = sigmoid(phi). 
+        idx_durations -- N. Event times for each individual represented as indices based on discretisation.
+        events -- N. Indicator of event (1.) or censoring (0.) for each individual. Floats.
+    Returns:
+        Negative LLH as a 1dim Tensor
+    """
+    if phi.shape[1] <= idx_durations.max():
+        raise ValueError(f"Network output `phi` is too small for `idx_durations`." +
+                         f" Need at least `phi.shape[1] = {idx_durations.max().item()+1}`," +
+                         f" but got `phi.shape[1] = {phi.shape[1]}`")
+    if events.dtype is torch.bool:
+        events = events.float()
+    # stack events and idx_durations to get Nx1 Tensor
+    # .view(-1, 1) -- infer first dimension to get second dimension as size=1
+    events = events.view(-1, 1)
+    idx_durations = idx_durations.view(-1, 1)
+    # create NxT zero Tensor and put in each row at the idx_duration whether the event occurred
+    # censored ppl have row of zeros, uncensored ppl have row with a single one
+    y_bce = torch.zeros_like(phi).scatter(1, idx_durations, events.float())
+    # with logits to pass phi through a sigmoid first -- recall it's unconstrained
+    bce = F.binary_cross_entropy_with_logits(phi, y_bce, reduction='none')
+    # sum the loss until failure time:
+    # first sum until each time
+    # then gather the summed loss at relevant failure time
+    loss = bce.cumsum(1).gather(1, idx_durations).view(-1)
+    return _reduction(loss, reduction)
   
+def _reduction(loss: Tensor, reduction: str = 'mean') -> Tensor:
+    if reduction == 'none':
+        return loss
+    elif reduction == 'mean':
+        return loss.mean()
+    raise ValueError(
+        f"`reduction` = {reduction} is not valid. Use 'none', or 'mean'.")
   
 ################################################## Concodance Index metrics ######################################################
 
@@ -198,8 +237,8 @@ class Discretiser():
         scheme -- either equidistant or km
     """
 
-    def __init__(self, cuts, scheme='equidistant'):
-        self._cuts = cuts
+    def __init__(self, num_duration, scheme='equidistant'):
+        self._cuts = num_duration
         self._scheme = scheme
         self.cuts = None
 
@@ -270,9 +309,9 @@ def Evaluation(model, train_time, train_status, X_test, test_time, test_status, 
 
     # Predict survival probabilities
     X_test_tensor = torch.as_tensor(X_test, dtype=torch.float32, device=device)
-    sp_test = predict_surv(model, X_test_tensor)
+    sp_test = predict_surv(model, X_test_tensor)  
     surv = surv_const_pdf_df(sp_test, discretiser.cuts)
-
+     
     # PyCox evaluation
     ev = EvalSurv(surv, test_time, test_status, censor_surv="km")
 
@@ -310,7 +349,11 @@ def Evaluation(model, train_time, train_status, X_test, test_time, test_status, 
         )
 
         p_value = safe_metric("D-Calibration", lambda: evaluator.d_calibration()[0])
-        weighted_MAE_PO = safe_metric("Weighted MAE PO", lambda: evaluator.mae(method="Pseudo_obs", weighted=True))
+        weighted_MAE_PO = np.nan 
+        if np.sum(train_status) > 0:
+            weighted_MAE_PO = safe_metric("Weighted MAE PO", lambda: evaluator.mae( method="Pseudo_obs", weighted=True))
+        else:
+            logger.warning( "Weighted MAE PO skipped because the training split has no events." )
 
     except Exception:
         logger.exception("SurvivalEvaluator initialization failed.")

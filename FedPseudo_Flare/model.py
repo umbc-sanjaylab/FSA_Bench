@@ -1,14 +1,11 @@
-import torch
-import torch.nn as nn   
-import os 
-import numpy as np 
+import torch, torch.nn as nn, os  
 from utils import get_input_feature
 
 ##############################################################################################################################    
   
 def init_net(model, device, args):   
     in_features =  get_input_feature(args)
-    out_features= 9  
+    out_features= 9
     
     os.environ[f"{args.dataset}_input_size"] = str(in_features)
     os.environ["DEVICE"] = device
@@ -87,77 +84,7 @@ class FedPLSTM(nn.Module):
 
 
 ########################################## FedPAttn #################################################
-    
-# class FedPAttn(nn.Module):
-#     def __init__(self, dataset=None, in_features=None, out_features=None, dropout=0.1, hidden_size=128, num_layers=2):
-#         super(FedPAttn, self).__init__()
-        
-#         if in_features is None or out_features is None:
-#             input_size = os.environ.get(f"{dataset}_input_size", "")
-#             in_features, out_features = int(input_size), 9
-
-#         self.rnn = nn.LSTM(input_size=in_features, hidden_size=hidden_size,
-#                           num_layers=num_layers, batch_first=True, bidirectional=True)
-#         self.out_features = out_features #number of classes
-        
-#         self.num_layers = num_layers #number of layers
-#         self.input_size = in_features #input size
-        
-#         self.hidden_size = hidden_size #hidden state
-#         self.fc_1 =  nn.Linear(2*hidden_size, 2*hidden_size) #fully connected 1
-        
-#         self.relu = nn.ReLU()        
-#         self.fc = nn.Linear(2*hidden_size, out_features) #fully connected last layer
-#         self.sigmoid=nn.Sigmoid()
-        
-#         self.i_q = nn.Parameter(torch.normal(0, 0.1, size=(in_features, hidden_size)))
-#         self.i_k = nn.Parameter(torch.normal(0, 0.1, size=(in_features, hidden_size)))
-#         self.i_v = nn.Parameter(torch.normal(0, 0.1, size=(in_features, hidden_size)))
-#         self.i_w0 = nn.Parameter(torch.normal(0, 0.1, size=(hidden_size, in_features)))
-     
-#     # def attention(self,x, input_size, hidden_size):
-#     def attention(self, x):
-#         """
-#         self attention : return self._z
-#         """
-        
-#         q_trans = self.i_q.unsqueeze(0).expand(x.shape[0], -1, -1)
-#         k_trans = self.i_k.unsqueeze(0).expand(x.shape[0], -1, -1)
-#         v_trans = self.i_v.unsqueeze(0).expand(x.shape[0], -1, -1)
-#         w0 = self.i_w0.unsqueeze(0).expand(x.shape[0], -1, -1)
-
-#         q = torch.matmul(x, q_trans)
-#         k = torch.matmul(x, k_trans)
-#         v = torch.matmul(x, v_trans)
-
-#         score = torch.matmul(q, torch.transpose(k, 2, 1)) / np.sqrt(self.hidden_size)
-#         m = torch.softmax(torch.matmul(score, v), dim=2)
-
-#         z = torch.matmul(m, w0)
-#         z = z + x
-#         return z
-
-
-    # def forward(self, x):
-    #     dvce = os.environ.get("DEVICE", "")
-    #     device = torch.device(dvce) if torch.cuda.is_available() else "cpu" 
-        
-    #     x=torch.reshape(x, (-1, 1, x.shape[1])).to(device)
-        
-    #     #  attn_output = self.attention(x, self.input_size, self.hidden_size).clone().detach().to(device)
-        
-    #     attn_output = self.attention(x)
-    #     h_0 = torch.zeros(2*self.num_layers, attn_output.size(0), self.hidden_size).to(device) #hidden state
-    #     c_0 = torch.zeros(2*self.num_layers, attn_output.size(0), self.hidden_size).to(device) #internal state
-        
-    #     output, (hidden, cell) = self.rnn(attn_output, (h_0, c_0))
-    #     out = self.fc(output) #Final Output
-        
-    #     out=torch.reshape(out, (-1, self.out_features))
-    #     out = self.sigmoid(out)
-    #     return out   
-
- 
+      
 class FedPAttn(nn.Module):
     def __init__(self, dataset=None, in_features=None, out_features=None, dropout=0.1, hidden_size=128, num_layers=2):
         super(FedPAttn, self).__init__()

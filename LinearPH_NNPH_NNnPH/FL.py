@@ -1,9 +1,10 @@
-import numpy as np
+import numpy as np 
 
 from .client.client import train_local_client, evaluate_global_model_on_clients
-from .client.utils import Discretiser
+from .model import init_net
+from .client.utils import Discretiser, data_transform
 from .server.server import aggregate_fedavg
-from .server.utils import EarlyStopping
+from .server.utils import EarlyStopping 
 
 import logging 
 logger = logging.getLogger("experiment")
@@ -11,15 +12,24 @@ logger = logging.getLogger("experiment")
 def is_finite_metric(value):
     return value is not None and np.isscalar(value) and np.isfinite(float(value))  
 
-def run_federated(model, clients, eval_times, args):
-    num_durations = 40
-    device = args.device
+def run_federated(clients, eval_times, args): 
+    device = args.device 
+    discretiser = Discretiser(args.num_duration, scheme='km') 
     
-    global_model = model.to(device)
-    discretiser = Discretiser(num_durations, scheme='km') 
+    train_time = np.concatenate([client.train.time for client in clients])
+    train_event = np.concatenate([client.train.event for client in clients])
+
+    # Fit discretiser using training outcomes
+    data_transform((train_time, train_event), discretiser, fit_transform=True) 
+    input_size = clients[0].train.X.shape[1]
+    
+    global_model = init_net(input_size, len(discretiser.cuts), args) 
+    global_model.to(device)  
+ 
+      
     early_stopping = EarlyStopping(patience=args.patience, directory=args.modeldir,\
                                   verbose=True, discretiser=discretiser,\
-                                  checkpoint_pth=f"{args.model}_model_run_{args.run_id}.pt")
+                                  checkpoint_pth=f"{args.model}_global_{args.run_id}.pt")
 
     # Initialize outputs safely.
     global_val_cindex, test_cindex, test_brier = np.nan, np.nan, np.nan 

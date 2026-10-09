@@ -1,6 +1,5 @@
 import os 
-import numpy as np 
-from partition import  federated_partition
+import numpy as np  
 from .missing_value import preprocess_missing
 from .encoding import encode_with_schema 
 from sklearn.model_selection import StratifiedKFold, KFold, train_test_split
@@ -9,6 +8,36 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import StratifiedKFold, KFold, train_test_split
 import numpy as np
 from collections import Counter
+
+
+############################### Federated Partitions ####################################################### 
+  
+def federated_partition(data, num_centers, region_column):
+    """
+    Split data according to region across each center
+    Arguments:
+        data -- combined data
+        num_centers -- number of centers
+        region_column -- region column of the dataframe. 
+    Returns:
+        Dict with center_id : indices of data assigned to center
+    """
+
+    # Get unique regions
+    unique_values = sorted(data[region_column].unique())
+
+    # Optional check
+    if num_centers != len(unique_values):
+        print(f"Warning: num_centers ({num_centers}) != number of regions ({len(unique_values)})")
+
+    dict_center_idxs = {}
+    for _, region in enumerate(unique_values):
+
+        # Get indices for this region and store it in a dictionary
+        region_idxs = data.index[data[region_column] == region].tolist()
+        dict_center_idxs[region] = region_idxs
+
+    return dict_center_idxs
 
 ################################################## Five fold cross validation ############################################
 
