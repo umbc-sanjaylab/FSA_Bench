@@ -1,7 +1,5 @@
 import torch
-import torchtuples as tt
 from torch import nn
-
 
 class CauseSpecificNet(nn.Module): 
     def __init__( self, in_features, num_nodes_shared, num_nodes_indiv, num_risks, out_features, dropout=0.0):

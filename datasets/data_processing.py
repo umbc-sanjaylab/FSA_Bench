@@ -82,13 +82,15 @@ def prepare_survival_data_and_time(args, client_id=None):
     eval_times =    compute_eval_times(survival_data, interval=args.time_interval)
     return survival_data, eval_times 
 
-################################################## Evaluation Time Points ############################################
+################################################## Evaluation Time Points ############################################ 
 
-def compute_eval_times(data, interval=10):
+def compute_eval_times(data, interval=10, end=99):
     times = []
-    for client in data.clients: 
+    for client in data.clients:
         times.append(client.train.time)
         times.append(client.val.time)
 
-    global_times = np.unique(np.concatenate(times))
-    return np.percentile(  global_times, np.arange(interval, 99, interval))
+    global_times = np.unique(np.concatenate(times)) 
+    percentiles = np.arange(interval, end, interval)
+     
+    return np.percentile(global_times, percentiles)

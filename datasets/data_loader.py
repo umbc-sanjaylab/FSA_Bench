@@ -13,7 +13,6 @@ def get_dataset_config(dataset_name):
 
     return DATASET_CONFIG[dataset_name]
   
-  
 ######################################### Read dataset properties ############################################## 
 
 def dataset_properties(dataset_name):

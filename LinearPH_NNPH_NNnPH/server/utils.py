@@ -112,7 +112,7 @@ class EarlyStopping:
 
      
 
-#################################### Early Stopping Criteria ############################################################ 
+#################################### Experiment Logger ############################################################ 
 
 def create_experiment_logger(logdir, setting, model, dataset, run_id):
     logger_name = f"{setting}_{model}_{dataset}_fold_{run_id}"

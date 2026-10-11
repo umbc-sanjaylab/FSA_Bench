@@ -1,11 +1,13 @@
 import torch.nn as nn
 import torch 
+import numpy as np
+from torchsurv.loss.weibull import neg_log_likelihood_weibull
 
 ############################# AFT_Weibull ############################################################################################
 
-class WeibullTimeToEventModel(nn.Module):
+class AFT_Weibull(nn.Module):
     def __init__(self, num_input_features):
-        super(WeibullTimeToEventModel, self).__init__() 
+        super(AFT_Weibull, self).__init__() 
         self.phi = nn.Parameter(torch.tensor([0.0], dtype=torch.float))
 
         # Important: negative sign because log_scale = -psi when phi=0 and linear≈0
@@ -23,14 +25,79 @@ class WeibullTimeToEventModel(nn.Module):
 
 ################################################### Function For initializing networks ##################################################
 
+def init_net(input_size, args):  
+    if args.model == "AFT_Weibull":
+        net = AFT_Weibull(input_size)
+    else:
+        print("not supported yet")
+        exit(1)
+    return net   
+  
+########################## Function for training the model  #####################################
 
-def init_nets(input_size,  n_parties, args): 
-    nets = {net_i: None for net_i in range(n_parties)} 
-    for net_i in range(n_parties): 
-        if args.model == "AFT_Weibull":
-            net = WeibullTimeToEventModel(input_size)
-        else:
-            print("not supported yet")
-            exit(1)
-        nets[net_i] = net 
-    return nets
+
+def train(train_loader, weibull_model, optimizer, device="cpu"):
+    weibull_model.train()
+    weibull_model.to(device)
+
+    total_loss = 0.0
+    num_points = 0
+
+    for X_batch, Y_batch, D_batch in train_loader:
+        X_batch = X_batch.to(device)
+        Y_batch = Y_batch.to(device)
+        D_batch = D_batch.to(device).bool()
+
+        # skip fully censored batch
+        if torch.sum(D_batch).item() == 0:
+            continue
+
+        log_hazards_batch = weibull_model(X_batch) 
+        loss_batch = neg_log_likelihood_weibull(log_hazards_batch, D_batch, Y_batch)
+
+        optimizer.zero_grad()
+        loss_batch.backward()
+        optimizer.step()
+
+        batch_loss_sum = neg_log_likelihood_weibull(log_hazards_batch, D_batch, Y_batch, reduction='sum').item() 
+        total_loss += batch_loss_sum
+        num_points += X_batch.size(0)
+
+    if num_points == 0:
+        return np.nan
+
+    train_loss = total_loss / num_points
+    return train_loss
+
+########################## Function for evaluating the model ##############################################################
+
+
+def evaluate(val_loader, weibull_model, device="cpu"):
+
+    weibull_model.eval()
+    weibull_model.to(device)
+
+    with torch.no_grad():
+        val_loss = torch.tensor(0.0, dtype=torch.float, device=device)
+        num_points = 0
+
+        for X_batch, Y_batch, D_batch in val_loader:
+
+            X_batch = X_batch.to(device)
+            Y_batch = Y_batch.to(device)
+            D_batch = D_batch.to(device).bool()
+
+            # skip fully censored batches
+            if torch.sum(D_batch).item() == 0:
+                continue
+
+            log_hazards_batch = weibull_model(X_batch)
+            val_loss += neg_log_likelihood_weibull(log_hazards_batch, D_batch, Y_batch, reduction='sum')
+            num_points += X_batch.size(0)
+
+        if num_points == 0:
+            return np.nan
+
+        val_loss = float(val_loss / num_points)
+
+    return val_loss

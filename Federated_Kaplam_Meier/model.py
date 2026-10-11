@@ -1,97 +1,139 @@
-import torch
-import torchtuples as tt   
-from torch import nn 
+import numpy as np
+import pandas as pd 
 
-class VannilaMLPNetwork(nn.Module):
-    def __init__(self, in_features, hidden_sizes, out_features=1, dropout=0.0, output_bias=False):
-        super().__init__()
-        layers = []
-        prev = in_features
-        for h in hidden_sizes:
-            layers.append(nn.Linear(prev, h, bias=True))
-            layers.append(nn.LayerNorm(h))       
-            layers.append(nn.ReLU())
-            if dropout and dropout > 0:
-                layers.append(nn.Dropout(dropout))
-            prev = h
+################################################### Function For initializing networks ##################################################
 
-        layers.append(nn.Linear(prev, out_features, bias=output_bias))
-        self.net = nn.Sequential(*layers)
+def init_net(args):  
+    if args.model == "Kaplan_Meier":
+        net = Kaplan_Meier()
+    else:
+        print("not supported yet")
+        exit(1)
+    return net    
+  
+############################# Kaplan Meier Model ############################################################################################  
 
-    def forward(self, x):
-        return self.net(x) 
+class Kaplan_Meier:
+    def __init__(self):
+        self.timeline_ = None
+        self.survival_ = None
 
-class CauseSpecificNet(nn.Module):
+    def fit(self, time, event):
+        local_matrix = local_partial_matrix(time, event)
+        return self.fit_from_partial_matrix(local_matrix)
+
+    def fit_from_partial_matrix(self, partial_matrix):
+        full_matrix, survival = global_survival_probability(partial_matrix)
+
+        self.timeline_ = full_matrix[:, 0]
+        self.survival_ = survival
+
+        return self
+
+    def predict_survival(self):
+        if self.survival_ is None:
+            raise ValueError("Kaplan_Meier must be fitted first.")
+
+        return self.timeline_, self.survival_ 
+      
+
+#####################################  Global Survival Curve Probabilities  ########################################
+
+def global_survival_probability(global_partial_matrix):
     """
-    Cause-specific network (DeepHit-style) WITHOUT residual connections,
-    using custom VannilaMLPNetwork with LayerNorm (batch-size safe).
+    Arguments:
+        global_partial_matrix: aggregated Kaplan-Meier Components for all clients
+
+    Return:
+        A partial table with KM estimator components.
     """
-    def __init__(  self,
-        in_features, num_nodes_shared,  num_nodes_indiv,
-        num_risks,  out_features,dropout=None,):
-        super().__init__()
 
-        # ---------- Shared network ----------
-        # num_nodes_shared = [h1, h2, ..., h_last]
-        self.shared_net = VannilaMLPNetwork(
-            in_features=in_features,   hidden_sizes=num_nodes_shared[:-1],
-            out_features=num_nodes_shared[-1],  dropout=dropout,  output_bias=True, )
+    global_full_matrix = np.array(global_partial_matrix.copy())
+    r_last = global_full_matrix[0, 1]
+    d_last = global_full_matrix[0, 2]
+    c_last = global_full_matrix[0, 3]
 
-        # ---------- Cause-specific (risk-specific) heads ----------
-        self.risk_nets = nn.ModuleList()
-        for _ in range(num_risks):
-            net = VannilaMLPNetwork(
-                in_features=num_nodes_shared[-1],
-                hidden_sizes=num_nodes_indiv,
-                out_features=out_features,
-                dropout=dropout,
-                output_bias=True,
-            )
-            self.risk_nets.append(net)
+    for j in range(1, global_full_matrix.shape[0]):
+        r = r_last - d_last - c_last
+        d = global_full_matrix[j, 2]
+        c = global_full_matrix[j, 3]
 
-    def forward(self, x):
-        """
-        x: (batch_size, in_features)
-        return: (batch_size, num_risks, out_features)
-        """
-        shared_out = self.shared_net(x)                     # (B, H)
-        risk_outs = [net(shared_out) for net in self.risk_nets]
-        out = torch.stack(risk_outs, dim=1)                 # (B, R, O)
-        return out
-
-
-def init_nets(input_size, dropout_p, n_parties, args):
-
-    num_nodes_shared = [128, 64]
-    num_nodes_indiv = [64, 32]
-    num_risks=1                    
-    
-    output_size = args.num_duration 
-    alpha, sigma = 0.5, 0.5 
-    print("dataset is ", args.dataset)  
-    
-    nets = {net_i: None for net_i in range(n_parties)} 
-    num_nodes_shared = [128, 64]
-    num_nodes_indiv = [32] 
-    alpha, sigma =   (0.8, 1.0)
-            
-    for net_i in range(n_parties):    
-        if args.model == "DeepHit":
-            net = CauseSpecificNet(input_size, num_nodes_shared, num_nodes_indiv, num_risks,
-                       output_size, dropout_p)             
+        if r < 0:
+            global_full_matrix[j, 1] = 0
         else:
-            print("not supported yet")
-            exit(1)
+            global_full_matrix[j, 1] = r
             
-        nets[net_i] = net   
-        
-    model_meta_data = []
-    layer_type = []
-    for (k, v) in nets[0].state_dict().items():
-        model_meta_data.append(v.shape)
-        layer_type.append(k)
+        if d < 0:
+            global_full_matrix[j, 2] = 0
+        if c < 0:
+            global_full_matrix[j, 3] = 0
 
-    print(f"Value of alpha: {alpha} and value of sigma: {sigma} ") 
-    return nets, model_meta_data, layer_type, alpha, sigma 
+        r_last = r
+        d_last = d
+        c_last = c
 
+    # Calculate global survival probabilities using product rule formula
+    global_surv = np.cumprod( 1-(global_full_matrix[:, 2]/(global_full_matrix[:, 1]+0.000000001)))
+    return global_full_matrix, global_surv  
 
+#################################### Compute elememts olf local matrix #####################################################
+def local_partial_matrix(client_time, client_status):
+    """
+    Arguments:
+        client_time: array-like, time of events or censoring for the client
+        client_status: array-like, event status (1 for event, 0 for censoring) for the client
+
+    Return:
+        A new dataframe with time, number of patients at risk, number of events, and number of censored observations.
+    """
+    
+    # time points and event status  
+    time = np.asarray(client_time).reshape(-1)
+    event = np.asarray(client_status).reshape(-1).astype(int)
+
+    # sanity check for input arrays
+    if len(time) != len(event):
+        raise ValueError("Time and event arrays must have the same length.")
+
+    if not np.isin(event, [0, 1]).all():
+        raise ValueError(f"Event status must contain only 0/1, but found {np.unique(event)}.")
+
+    # Unique event/censoring times
+    timeline, inverse = np.unique(time, return_inverse=True)
+
+    # Number of events and censored observations at each time
+    di = np.bincount(inverse, weights=(event == 1).astype(int), minlength=len(timeline) ).astype(int) 
+    ci = np.bincount(inverse, weights=(event == 0).astype(int), minlength=len(timeline) ).astype(int)
+
+    # Number at risk immediately before each time point
+    removed = di + ci
+    nrisk = len(time) - np.concatenate(([0], np.cumsum(removed[:-1])))
+
+    # client's Kaplan-Meier component representation  
+    local_matrix = pd.DataFrame({
+        "time": timeline,
+        "nrisk": nrisk,
+        "di": di,
+        "ci": ci
+    }) 
+    
+    # keep only initial risk count 
+    local_matrix.loc[1:, "nrisk"] = 0 
+    return local_matrix
+
+###################################### Aggregate local client's Kaplan-Meier Components ########################################################
+
+def aggregate_local_matrices(local_matrices):
+    if not local_matrices:
+        raise ValueError("No local Kaplan-Meier matrices were provided.")
+
+    # Total number of subjects across all clients
+    total_nrisk = sum(matrix.iloc[0]["nrisk"] for matrix in local_matrices)
+
+    # Combine event/censor counts at common time points
+    global_partial_matrix =  pd.concat(local_matrices, ignore_index=True).groupby("time", as_index=False)[["di", "ci"]].sum().sort_values("time").reset_index(drop=True) 
+
+    # Server only needs the initial global risk count
+    global_partial_matrix["nrisk"] = 0
+    global_partial_matrix.loc[0, "nrisk"] = total_nrisk 
+    return global_partial_matrix[["time", "nrisk", "di", "ci"]]

@@ -29,7 +29,6 @@ class CentralizedSurvivalData:
     test: SurvivalSplit
 
 ############################ Survival data for both Centralized & Federated Partition ################################## 
-
 @dataclass
 class PreparedSurvivalData:
     clients: list[ClientSurvivalData]
@@ -38,7 +37,6 @@ class PreparedSurvivalData:
 
 
 ################################################## Data Builder ###################################################### 
-
 class SurvivalDataset(Dataset):
     def __init__(self, X, time, event):
         self.X = torch.as_tensor(X, dtype=torch.float32)
