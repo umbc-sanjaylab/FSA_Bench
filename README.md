@@ -90,7 +90,7 @@ The number of cross-validation folds, federated clients, and batch sizes vary ac
 | [scania](https://cran.r-project.org/web/packages/eha/refman/eha.html#scania) | 1,040 | 4 | 52.60 | 47.40 | 5 |
 | [SEER](https://seer.cancer.gov/) | 25,749 | 11 | 25.36 | 74.64 | 3 |
 
-> **Dataset availability:** We do not distribute the exact datasets or processed versions used in this benchmark through this repository or via direct download links. To obtain the datasets, please contact us for additional information regarding data access and availability.  
+> **Dataset availability:** We do not distribute the exact datasets or processed versions used in this benchmark through this repository or via direct download links. Please contact us for additional information regarding data access and availability.
 
 > Dataset configuration may vary across individual model scripts.
  
