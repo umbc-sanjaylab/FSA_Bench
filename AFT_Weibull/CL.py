@@ -14,7 +14,7 @@ logger = logging.getLogger("experiment")
 def train_centralized(net, data, feature_list, evaltime, args): 
     print('Training network')
 
-    optimizer = build_optimizer(net, args)  
+    optimizer = build_optimizer(net, args)
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', patience=args.patience)  # Learning rate scheduler
     
     best_val_cindex = 0.0
