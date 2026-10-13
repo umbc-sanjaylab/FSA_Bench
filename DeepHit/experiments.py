@@ -72,8 +72,8 @@ if __name__ == '__main__':
     data = prepare_survival_data(args) 
     
     # logger file name  
-    argument_path = f"experiment_arguments-{datetime.now().strftime("%Y-%m-%d-%H-%M-%S")}.json"
-    log_path = f"experiment_log-{datetime.now().strftime("%Y-%m-%d-%H-%M-%S")}.log"
+    argument_path = f"experiment_arguments-{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}.json"
+    log_path = f"experiment_log-{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}.log"
 
     # Save experiment arguments
     with open(os.path.join(args.logdir, argument_path), "w") as f:

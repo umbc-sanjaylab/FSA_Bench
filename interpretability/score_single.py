@@ -85,11 +85,6 @@ def global_importance(fold, model_name, model, X: pd.DataFrame, y, background: O
         for chunk_id, chunk in enumerate(chunks):
             executor_index = ( chunk_id % actual_workers )
             future = executors[ executor_index ].submit( _process_survshap_chunk, (chunk_id, chunk))
-            future_to_chunk_id[future] = chunk_id
-
-        
-
-            
- 
+            future_to_chunk_id[future] = chunk_id  
    
     return global_feature_importance .sort_values(ascending=False).rename("global_importance")  

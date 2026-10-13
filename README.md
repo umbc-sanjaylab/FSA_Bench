@@ -69,8 +69,11 @@ torch==2.0.1
 scikit-learn==1.2.2
 pandas==1.3.5
 numpy==1.24.3
-``` 
+```  
 
+## Dataset
+
+The number of cross-validation folds, federated clients, and batch sizes vary across datasets.
 
 ## Dataset
 
@@ -78,21 +81,22 @@ The number of cross-validation folds, federated clients, and batch sizes vary ac
 
 ### Dataset Summary
 
-| Dataset | Samples | Variables | Event (%) | Censoring (%) | # Clients | Data Link |
-| --- | ---: | ---: | ---: | ---: | ---: | --- |
-| [TCGA](https://www.cancer.gov/ccg/research/genome-sequencing/tcga) | 6,084 | 283 | 30.50 | 69.50 | 7 | [TCGA Hub](https://xenabrowser.net/datapages/?hub=https://tcga.xenahubs.net:443) |
-| [Aids2](https://rdrr.io/cran/MASS/man/Aids2.html) | 2,839 | 3 | 62.03 | 37.97 | 4 | [SurvSet](https://github.com/ErikinBC/SurvSet) |
-| [LeukSurv](https://rdrr.io/cran/spBayesSurv/man/LeukSurv.html) | 1,043 | 4 | 84.28 | 15.72 | 24 | [SurvSet](https://github.com/ErikinBC/SurvSet) |
-| [Pbc3](https://www.rdocumentation.org/packages/pec/versions/2025.06.24/topics/Pbc3) | 349 | 12 | 17.48 | 82.52 | 6 | [SurvSet](https://github.com/ErikinBC/SurvSet) |
-| [Dialysis](https://rdrr.io/cran/RcmdrPlugin.survival/man/Dialysis.html) | 6,805 | 2 | 23.56 | 76.44 | 67 | [SurvSet](https://github.com/ErikinBC/SurvSetl) |
-| [Oropharyngeal Carcinoma](https://rdrr.io/cran/invGauss/man/d.oropha.rec.html) | 192 | 12 | 72.40 | 27.60 | 6 | [SurvSet](https://github.com/ErikinBC/SurvSet) |
-| [cgd](https://rdrr.io/cran/survival/man/cgd.html) | 128 | 8 | 34.38 | 65.62 | 4 | [SurvSet](https://github.com/ErikinBC/SurvSet) |
-| [uis](https://github.com/graemeleehickey/hosmer-lemeshow/blob/master/edition2/uis.txt) | 628 | 7 | 80.89 | 19.11 | 2 | [SurvSet](https://github.com/ErikinBC/SurvSet) |
-| [scania](https://cran.r-project.org/web/packages/eha/refman/eha.html#scania) | 1,040 | 4 | 52.60 | 47.40 | 5 | [SurvSet](https://github.com/ErikinBC/SurvSet) |
-| [SEER](https://seer.cancer.gov/)  | 25,749 | 11 | 25.36 | 74.64 | 3 | [SEER](https://seer.cancer.gov/data/) |
+| Dataset | Samples | Variables | Event (%) | Censoring (%) | # Clients |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| [TCGA](https://www.cancer.gov/ccg/research/genome-sequencing/tcga) | 6,084 | 283 | 30.50 | 69.50 | 7 |
+| [Aids2](https://rdrr.io/cran/MASS/man/Aids2.html) | 2,839 | 3 | 62.03 | 37.97 | 4 |
+| [LeukSurv](https://rdrr.io/cran/spBayesSurv/man/LeukSurv.html) | 1,043 | 4 | 84.28 | 15.72 | 24 |
+| [Pbc3](https://www.rdocumentation.org/packages/pec/versions/2025.06.24/topics/Pbc3) | 349 | 12 | 17.48 | 82.52 | 6 |
+| [Dialysis](https://rdrr.io/cran/RcmdrPlugin.survival/man/Dialysis.html) | 6,805 | 2 | 23.56 | 76.44 | 67 |
+| [Oropharyngeal Carcinoma](https://rdrr.io/cran/invGauss/man/d.oropha.rec.html) | 192 | 12 | 72.40 | 27.60 | 6 |
+| [cgd](https://rdrr.io/cran/survival/man/cgd.html) | 128 | 8 | 34.38 | 65.62 | 4 |
+| [uis](https://github.com/graemeleehickey/hosmer-lemeshow/blob/master/edition2/uis.txt) | 628 | 7 | 80.89 | 19.11 | 2 |
+| [scania](https://cran.r-project.org/web/packages/eha/refman/eha.html#scania) | 1,040 | 4 | 52.60 | 47.40 | 5 |
+| [SEER](https://seer.cancer.gov/) | 25,749 | 11 | 25.36 | 74.64 | 3 |
 
+> **Dataset availability:** The exact datasets and processed versions used in this benchmark are not distributed through this repository or provided through direct download links. Researchers interested in obtaining the datasets used in our experiments may contact the authors for additional information regarding data access and availability.
 
-> Dataset availability and configuration may vary across individual model scripts. 
+> Dataset configuration may vary across individual model scripts.
  
  ## Dataset Preprocessing
 
