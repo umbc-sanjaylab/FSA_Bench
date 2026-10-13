@@ -1,17 +1,19 @@
 # FSA-Bench: Benchmarking Federated Survival Models
 
-[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+[![Python 3.10](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![PyTorch](https://img.shields.io/badge/PyTorch-2.0+-red.svg)](https://pytorch.org/)
 [![NVIDIA FLARE](https://img.shields.io/badge/NVIDIA%20FLARE-2.7+-orange.svg)](https://nvflare.readthedocs.io/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
  
 ## Overview
 
-Paper • Installation • Requirements • Dataset • Dataset Preprocessing • Running Experiments • Interpretability • License
+Paper • How to Cite • Installation • Requirements • Dataset • Dataset Preprocessing • Running Experiments • Interpretability • Contact • License
 
 ## Paper
 
 This repository contains the official codebase for **[FSA-Bench: Benchmarking Federated Survival Models](https://proceedings.mlr.press/v340/ahmed26a.html)**, published at the **11th Machine Learning for Healthcare Conference (MLHC 2026)**.
+
+## How to Cite
 
 Please cite the paper if you use FSA-Bench, its code, or datasets:
 
@@ -60,7 +62,7 @@ pip install -r requirements.txt
 
 ## Requirements
 
-The following Python packages are required for running our experiments. 
+The following Python packages are required for running our experiments.  
 
 ```text
 jupyter==1.0.0
@@ -120,14 +122,14 @@ All commands should be executed from the repository root.
 To run a centralized learning experiment:
 
 ```bash
-bash scripts/run_fl.sh <model> <dataset>
+bash scripts/run_cl.sh <model> <dataset>
 ``` 
 
 To run a federated experiment, use this command: 
 
 ```bash
 # Federated Learning
-bash run_fl.sh <model> <dataset> 
+bash scripts/run_fl.sh <model> <dataset> 
 ```
 
 For example, to model Pbc3 dataset using NNnPH model, we can use this: 
@@ -139,7 +141,7 @@ bash scripts/run_fl.sh NNnPH Pbc3
 
 ### Windows
 
-For native Windows PowerShell, use this PowerShell scripts:
+For native Windows PowerShell, use these PowerShell scripts: 
 
 ```bash
 .\scripts\run_CL.ps1 <model> <dataset>
@@ -159,7 +161,7 @@ For example, to model Pbc3 dataset using NNnPH model, we can use this:
 | --- | --- | --- |
 | `<model>` | Specifies the survival model<br> used for the experiment. | `Fed. KM`, `AFT_Weibull`, `Fed_CoxPH`, `DeepPseudo`, `DeepHit`, <br> `LinearPH`, `NNPH`, `NNnPH`,  `FedPDNN`, `FedPLSTM`, `FedPAttn`|
 
-### Supported Dataset
+### Supported Datasets
 
 | Argument | Description | Possible Values |
 | --- | --- | --- |
@@ -203,6 +205,10 @@ For example, this command runs the fold-level interpretability analysis on the s
 python -m interpretability.fold_level -d seer
 ```  
 
+## Contact
+
+* Sultan Ahmed (sultan.ahmed@umbc.edu)
+* Sanjay Purushotham (psanjay@umbc.edu)
  
 ## License
 
