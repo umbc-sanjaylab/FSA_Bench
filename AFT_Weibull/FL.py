@@ -11,11 +11,11 @@ logger = logging.getLogger("experiment")
 def is_finite_metric(value):
     return value is not None and np.isscalar(value) and np.isfinite(float(value))  
 
-def run_federated(clients, eval_times, args):  
+def run_federated(clients, eval_times, args):
     input_size = clients[0].train.X.shape[1]
      
-    global_model = init_net(input_size,  args) 
-    global_model.to(args.device)  
+    global_model = init_net(input_size,  args)
+    global_model.to(args.device)
     early_stopping = EarlyStopping(patience=args.patience, verbose=True, directory=args.modeldir, checkpoint_pth=f'AFT_Weibull_gobal_{args.run_id}.tar')
 
     # Initialize outputs safely.
