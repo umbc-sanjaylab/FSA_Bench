@@ -70,10 +70,7 @@ scikit-learn==1.2.2
 pandas==1.3.5
 numpy==1.24.3
 ```  
-
-## Dataset
-
-The number of cross-validation folds, federated clients, and batch sizes vary across datasets.
+  
 
 ## Dataset
 
