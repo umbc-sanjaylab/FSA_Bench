@@ -1,19 +1,34 @@
-import numpy as np, torch 
 from copy import deepcopy
-from .utils import Concordance, train, evaluate, build_optimizer, Evaluation
+from .utils import Concordance, train, evaluate
+from .utils import build_optimizer, Evaluation
 from ..utils import is_finite_metric 
 from scipy.stats import combine_pvalues 
 from .utils import  pseudo_loss
-from ..utils import DataBuilder
+from ..utils import DataBuilder, pseudoFunction
+import pandas as pd, numpy as np, torch  
 from torch.utils.data import DataLoader
 
 import logging 
 logger = logging.getLogger("experiment")  
      
-################  Training Weibull AFT Model with "FedAvg" framework in Local Client  #################################
-def train_local_client( global_model, client, train_pseudo, val_pseudo, feature_list, eval_times, args):  
+################  Training DeepPseudo Model with "FedAvg" framework in Local Client  #################################
+def train_local_client( global_model, client, eval_times, args):  
+  
+    # Create DataFrame with time and status for pseudo values calculation
+    central_train_data = pd.DataFrame(pd.concat([pd.DataFrame(client.train.time), pd.DataFrame(client.train.status)], axis=1))
+    central_train_data.columns = ['time', 'status']
+    
+    central_val_data = pd.DataFrame(  pd.concat([pd.DataFrame(client.val.time), pd.DataFrame(client.val.status)], axis=1))
+    central_val_data.columns = ['time', 'status']
+    
+    # Calculate Pseudo values at prespecified evaltime
+    central_data = pd.concat( [central_train_data, central_val_data], axis=0)
+    pseudo_central = pseudoFunction(central_data, eval_times)
+      
+    train_pseudo=pseudo_central[:len(central_train_data),:]
+    val_pseudo=pseudo_central[len(central_train_data):,:]
 
-    modeldir, epochs, lr, optimizer, patience = args.modeldir, args.epochs, args.lr, args.optimizer, args.patience
+    modeldir, epochs, optimizer, patience = args.modeldir, args.epochs,  args.optimizer, args.patience
     logger.info(f'Training network') 
     
     # Each selected client starts from the current global model.
@@ -28,15 +43,15 @@ def train_local_client( global_model, client, train_pseudo, val_pseudo, feature_
     best_model_state = deepcopy(local_model.state_dict())  
     
     # train data loader from covariates, time and event status information
-    train_x = DataBuilder(client.train.X,  train_pseudo, feature_list)
+    train_x = DataBuilder(client.train.X,  train_pseudo)
     train_dataloader = DataLoader(dataset=train_x, batch_size=args.batch_size, shuffle=True, num_workers=1)
 
     # validation data loader from covariates, time and event status information
-    val_x = DataBuilder(client.val.X, val_pseudo, feature_list)
+    val_x = DataBuilder(client.val.X, val_pseudo)
     val_dataloader = DataLoader(dataset=val_x, batch_size=args.batch_size, shuffle=False, num_workers=1) 
 
     es = 0
-    for epoch in range(epochs):
+    for _ in range(epochs):
         # Calculate the train loss using train function
         train_loss = train(train_dataloader, local_model, criterion, optimizer, args.device)  
         val_loss = evaluate(val_dataloader, local_model, criterion, args.device) 
@@ -138,7 +153,7 @@ def evaluate_global_model_on_clients(global_model,  selected,  X_val_local_std, 
         if is_finite_metric(test_p_value): 
             client_p_values.append(float(test_p_value))
                 
-      # global_val_cindex = fix_cindex_direction(weighted_val_cindex / total_val_samples) 
+    # global_val_cindex = fix_cindex_direction(weighted_val_cindex / total_val_samples) 
     global_val_cindex = weighted_val_cindex / total_val_samples
     
     if len(client_p_values) > 0:

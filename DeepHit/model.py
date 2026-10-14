@@ -17,7 +17,7 @@ class CauseSpecificNet(nn.Module):
         # Concatenate original input with shared representation
         risk_in = num_nodes_shared[-1] + in_features
  
-        layers = [] 
+        layers = []
         for _ in range(num_risks):  
             layers.append(nn.Sequential(
                 nn.Linear(risk_in, num_nodes_indiv[0]),
@@ -34,24 +34,16 @@ class CauseSpecificNet(nn.Module):
         z = torch.cat([shared_out, x], dim=1)
 
         risk_outs = [net(z) for net in self.risk_nets] 
-        return torch.stack(risk_outs, dim=1)
+        return torch.stack(risk_outs, dim=1) 
 
-
-def init_nets(input_size, n_parties, args): 
-    nets = {net_i: None for net_i in range(n_parties)}  
-    for net_i in range(n_parties):
-        if args.model == "DeepHit":
-            net = CauseSpecificNet(
-                        in_features=input_size,
-                        num_nodes_shared=[128, 64],
-                        num_nodes_indiv=[32],
-                        num_risks=1,
-                        out_features=args.num_duration,
-                        dropout=args.dropout
-                  )
-        else:
-            print("not supported yet")
-            exit(1)
-
-        nets[net_i] = net  
-    return nets       
+def init_net(input_size, args): 
+    if args.model == "DeepHit":
+        net = CauseSpecificNet(in_features=input_size,
+                num_nodes_shared=[128, 64],
+                num_nodes_indiv=[32], num_risks=1,
+                out_features=args.num_duration,
+                dropout=args.dropout
+              ) 
+    else:
+        raise ValueError("Model not supported yet")
+    return net        

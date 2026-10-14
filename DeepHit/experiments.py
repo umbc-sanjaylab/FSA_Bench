@@ -4,7 +4,7 @@ from pathlib import Path
 from config import DATASET_CONFIG, save_result 
 from datasets.data_processing import prepare_survival_data_and_time
  
-from .CL import train_centralized
+from .CL import LabTransform, train_centralized
 from .FL import run_federated
 from .server.utils import create_experiment_logger, mkdirs
 
@@ -81,6 +81,9 @@ if __name__ == "__main__":
         # Configure logger for current fold
         logger = create_experiment_logger(args.logdir, args.partition, args.model, args.dataset, args.run_id) 
         logger.info("Running %s experiment | Model: %s | Dataset: %s | Fold: %d/%d", args.partition, args.model, args.dataset, fold + 1, num_folds)
+        
+        alpha, sigma = (0.2, 0.1) 
+        labtrans = LabTransform(args.num_duration)   
 
         # Load preprocessed data and evaluation time for both CL & FL
         data, eval_times = prepare_survival_data_and_time(args)
@@ -88,9 +91,9 @@ if __name__ == "__main__":
 
         # Initialize model and start experiment 
         if args.partition == "CL": 
-            results = train_centralized(data=data.centralized, feature_list=data.feature_list, evaltime=eval_times, args=args)  
+            results = train_centralized(data=data.centralized, feature_list=data.feature_list, evaltime=eval_times,  alpha=alpha, sigma= sigma,  labTransform=labtrans, args=args)  
         else:
-            results = run_federated(clients=data.clients, eval_times=eval_times, args=args)
+            results = run_federated(clients=data.clients, eval_times=eval_times,  alpha=alpha, sigma=sigma, labTransform=labtrans, args=args)
         
         # def save_result(final_test_cidx, final_test_brier, final_test_nbll, final_test_p_value, final_test_weighted_MAE_PO, args): 
         save_result(results["best_round"], results['val_cindex'], results['cindex'], results['brier'], results['nbll'], results['d_calibration'], results['mae_po'], args) 

@@ -1,18 +1,18 @@
 from copy import deepcopy 
 import numpy as np, os, torch  
-from .utils import DataBuilder
 from torch.utils.data import DataLoader
+from .utils import DataBuilder, pseudoFunction
 
 from .model import train,  evaluate 
-from .client.utils import  build_optimizer, pseudo_loss
 from .client.utils import Concordance, Evaluation 
+from .client.utils import  build_optimizer, pseudo_loss
 
-import logging 
+import logging, pandas as pd  
 logger = logging.getLogger("experiment") 
 
 ################################ Centralized DeepPseudo Training ################################ 
       
-def train_centralized(net, data, train_pseudo, val_pseudo, feature_list, evaltime, args):  
+def train_centralized(net, data,  evaltime, args):  
     """
     Train and evaluate DeepPseudo in the centralized setting.
 
@@ -22,17 +22,11 @@ def train_centralized(net, data, train_pseudo, val_pseudo, feature_list, evaltim
         DeepPseudo neural network.
     data : CentralizedSurvivalData
         Centralized training, validation, and test splits.
-    train_pseudo : np.ndarray
-        Pseudo-values for the training set.
-    val_pseudo : np.ndarray
-        Pseudo-values for the validation set.
-    feature_list : list[str]
-        Names of input features.
     evaltime : array-like
         Evaluation time grid used for survival metrics.
     args : argparse.Namespace
         Experiment configuration and training hyperparameters.
-
+     
     Returns
     -------
     dict
@@ -42,6 +36,20 @@ def train_centralized(net, data, train_pseudo, val_pseudo, feature_list, evaltim
     # initializes network
     logger.info("Training network")
     net = net.to(args.device)
+    
+    # Create DataFrame with time and status for pseudo values calculation
+    central_train_data = pd.DataFrame(pd.concat([pd.DataFrame(data.train.time), pd.DataFrame(data.train.status)], axis=1))
+    central_train_data.columns = ['time', 'status']
+    
+    central_val_data = pd.DataFrame(  pd.concat([pd.DataFrame(data.val.time), pd.DataFrame(data.val.status)], axis=1))
+    central_val_data.columns = ['time', 'status']
+    
+    # Calculate Pseudo values at prespecified evaltime
+    central_data = pd.concat( [central_train_data, central_val_data], axis=0)
+    pseudo_central = pseudoFunction(central_data, evaltime)
+      
+    train_pseudo=pseudo_central[:len(central_train_data),:]
+    val_pseudo=pseudo_central[len(central_train_data):,:]
     
     # Optimizer, loss function, and learning rate scheduler
     optimizer = build_optimizer(net, args)   
@@ -57,11 +65,11 @@ def train_centralized(net, data, train_pseudo, val_pseudo, feature_list, evaltim
     es = 0
     
     # train data loader from covariates, time and event status information
-    train_x = DataBuilder(data.train.X,  train_pseudo, feature_list)
+    train_x = DataBuilder(data.train.X,  train_pseudo)
     train_dataloader = DataLoader(dataset=train_x, batch_size=args.batch_size, shuffle=True, num_workers=1)
 
     # validation data loader from covariates, time and event status information
-    val_x = DataBuilder(data.val.X, val_pseudo, feature_list)
+    val_x = DataBuilder(data.val.X, val_pseudo)
     val_dataloader = DataLoader(dataset=val_x, batch_size=args.batch_size, shuffle=False, num_workers=1) 
     
     for epoch in range(args.epochs):

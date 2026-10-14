@@ -1,9 +1,0 @@
-1. install git lfs in Ubuntu: 
-
-sudo apt-get install git-lfs
-git lfs install
-
-
-2. 
-
-git rev-list --objects --all | git cat-file --batch-check='%(objectsize) %(rest)' | awk '$1 > 100*1024*1024 {printf "%.1f MB  %s\n", $1/1024/1024, $2}'
