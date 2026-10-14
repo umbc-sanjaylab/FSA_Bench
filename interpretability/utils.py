@@ -7,7 +7,7 @@ from lifelines import KaplanMeierFitter
 
 import os, argparse, warnings  
 from pathlib import Path 
-from .config import DATASET_FOLDS, MODELS, DATASET_CLIENTS
+from .config import DATASET_FOLDS,  DATASET_CLIENTS
 
 from .model import FedPDNN, FedPLSTM, FedPAttn, DeepPseudo
 from .model import WeibullTimeToEventModel, Fed_CoxPH 
@@ -434,15 +434,7 @@ def get_data_model_directory_fold_level(model_name, data, fold, client=0):
     else:
         raise ValueError("model name did not match with our repository") 
     return CKPT_TMPL 
-
-#############################################################################################################################
-#############################################################################################################################
-#############################################################################################################################
-#############################################################################################################################
-#############################################################################################################################
-#############################################################################################################################
-#############################################################################################################################
-
+ 
 ####################################### Arguments Method ####################################################################
 
 def get_args(description): 
@@ -467,55 +459,7 @@ def close_logger(logger):
     for handler in logger.handlers[:]:
         handler.flush() 
         handler.close()
-        logger.removeHandler(handler) 
- 
-
-####################################### partition wise configuration ####################################################################
-
-def get_data_model_directory_partition_wise(model, data, fold, client): 
-    PROJECT_ROOT = Path(__file__).resolve().parent  
-    model_name = model 
-    
-    if model  not in MODELS:
-        raise ValueError(f"Unsupported model: {model_name}") 
-    
-    if model in ["FedPDNN", "FedPLSTM", "FedPAttn"]: 
-        model_name = "FedPseudo_Flare"   
-    
-    cent_tmpl=  PROJECT_ROOT / model_name / "models" /  "CL" / data / f"{model_name}_{fold}_global.pt" 
-    fed_tmpl =  PROJECT_ROOT / model_name / "models" /  "FL" / data / f"{model_name}_{fold}_{client}.pt" 
-    
-    return str(cent_tmpl), str(fed_tmpl)
-
-####################################### Site-Level Configuration ###################################
-
-def get_data_model_directory_site_level(model, data, fold, client):    
-    PROJECT_ROOT = Path(__file__).resolve().parent  
-    model_name = model
-    
-    if model  not in MODELS:
-        raise ValueError(f"Unsupported model: {model_name}") 
-    
-    if model in ["FedPDNN", "FedPLSTM", "FedPAttn"]: 
-        model_name = "FedPseudo_Flare"
-    
-    ckpt_tmpl =   PROJECT_ROOT / model_name / "models" /  "FL" / data / f"{model_name}_{fold}_{client}.pt" 
-    return str(ckpt_tmpl)
-
-####################################### Fold-Level Configuration ###################################
-
-def get_data_model_directory_fold_level(model, data, fold):  
-    PROJECT_ROOT = Path(__file__).resolve().parent   
-    model_name = model
-    
-    if model_name  not in MODELS:
-        raise ValueError(f"Unsupported model: {model_name}")
-    
-    if model in ["FedPDNN", "FedPLSTM", "FedPAttn"]: 
-        model_name = "FedPseudo_Flare"
-    
-    ckpt_tmpl =  PROJECT_ROOT / model_name / "models" /  "CL" / data / f"{model_name}_{fold}_global.pt" 
-    return str(ckpt_tmpl)  
+        logger.removeHandler(handler)   
 
 ############################################# Discretizer ######################################################################### 
 
@@ -754,40 +698,4 @@ def adapter_from_surv_matrix(predict_surv_matrix, times):
         S = np.asarray(predict_surv_matrix(model, data), dtype=float)
         return np.array([StepFn(times, -np.log(np.clip(row, 1e-8, 1.0)))
                          for row in S])
-    return psf, pchf
-  
-# def run_fold_on_two_gpus( client, fold, feature_cols, times, in_features, out_features, ):
-#     number_of_test_instances = len(load_fold_csv("test", fold=fold))
-
-#     midpoint = ( number_of_test_instances + 1 ) // 2 
-#     jobs = [ { "client": client, "fold": fold, "feature_cols": feature_cols, "times": times, "in_features": in_features, "out_features": out_features, "device": "cuda:1", "explain_start": 0, "explain_end": midpoint, "background_size": 100, }, { "client": client, "fold": fold, "feature_cols": feature_cols, "times": times, "in_features": in_features, "out_features": out_features, "device": "cuda:2", "explain_start": midpoint, "explain_end": number_of_test_instances, "background_size": 100, }]
-
-#     context = mp.get_context("spawn") 
-#     with concurrent.futures.ProcessPoolExecutor(
-#         max_workers=2,
-#         mp_context=context,
-#     ) as executor:
-
-#         futures = [ executor.submit( fold_importance, **job, ) for job in jobs ]
-#         shard_results = [ future.result() for future in futures ]
-
-#     total_instances = sum(
-#         shard_size
-#         for shard_size, _ in shard_results
-#     )
-
-#     weighted_sum = sum(
-#         shard_importance * shard_size
-#         for shard_size, shard_importance
-#         in shard_results
-#     )
-
-#     full_importance = (
-#         weighted_sum / total_instances
-#     )
-
-#     return (
-#         full_importance
-#         .sort_values(ascending=False)
-#         .rename("global_importance")
-#     )
+    return psf, pchf 
