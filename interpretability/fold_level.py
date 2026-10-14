@@ -11,9 +11,9 @@ from pathlib import Path
 import torchtuples as tt
 from pycox.models import CoxPH
 
-from interpretability.folds.config import TIME_COL, EVENT_COL, SEED, B
+from .config import TIME_COL, EVENT_COL, SEED, B
 from interpretability.folds.score import global_importance
-from interpretability.folds.utils import (
+from .utils import (
     load_fold_csv,
     get_data_model_directory_fold_level,
     load_model_site,

@@ -9,13 +9,13 @@ from pathlib import Path
 from sksurv.util import Surv
 from datetime import datetime 
 from pycox.models import CoxPH
-from .folds.score import global_importance
+from .score import global_importance
 from scipy.stats import spearmanr, kendalltau
 from lifelines.exceptions import ApproximationWarning
-from .folds.config import TIME_COL, EVENT_COL,   SEED, B 
-from .folds.utils import  load_central_csv, load_discretizer, pseudo_eval_times 
-from .folds.utils import  get_data_model_directory_partition_wise
-from .folds.utils import select_survival_background, load_model_partition
+from .config import DATASET_CHUNKS, TIME_COL, EVENT_COL,   SEED, B, DATASET_FOLDS, DATASET_CLIENTS  
+from .utils import  get_folds, get_sites, load_central_csv, load_discretizer, pseudo_eval_times 
+from .utils import  get_data_model_directory_partition_wise
+from .utils import select_survival_background, load_model_partition
 warnings.filterwarnings("ignore", category=ApproximationWarning)  
 
 def split_xy(df, feature_cols):
@@ -26,7 +26,8 @@ def split_xy(df, feature_cols):
   
 def ranking(ckpt_path, data_name, model_name, fold, chunk_size, logger): 
     global discretiser
-    data_dir   = f"/home/il66977@ad.umbc.edu/Benchmarking_FSA/datasets/processed_data/federated_data/{data_name}/centralized"
+    PROJECT_ROOT = Path(__file__).resolve().parent  
+    data_dir   = f"{PROJECT_ROOT}/datasets/processed_data/federated_data/{data_name}/centralized"
     
     train_df = load_central_csv(data_dir, "train", fold)  
     val_df = load_central_csv(data_dir, "val", fold)
@@ -120,93 +121,30 @@ def create_partition_logger(dataset, model_name):
 
     return logger
 
-def get_args(): 
-    parser = argparse.ArgumentParser( description="Run site-level interpretability analysis.")
-    parser.add_argument("-d", "--dataset-group", type=int, required=True, choices=[1, 2, 3, 4, 5], help="Dataset group to run:")
 
-    args = parser.parse_args()
-    d = args.dataset_group
-    return d 
+####################################### Arguments Method ####################################################################
+
+def get_args(description): 
+    parser = argparse.ArgumentParser( description=description) 
+    parser.add_argument("-d", "--dataset", required=True, choices=DATASET_FOLDS.keys(), help="Dataset to analyze.") 
+    return parser.parse_args()  
   
 if __name__=="__main__": 
-    dataset = "Pbc3" 
     global discretiser
-     
-    d = get_args()  
+    args = get_args( "Run site-level interpretability analysis.")
     
-    if d == 1: 
-        dataset_name = "scania"
-    elif d == 2: 
-        dataset_name = "uis"
-    elif d == 3: 
-        dataset_name = "d.oropha.rec" 
-    elif d == 4:
-        dataset_name = "Dialysis"
-    else: 
-        dataset_name = "Aids2"
+    dataset =  args.dataset 
+    folds = get_folds(dataset)   
     
+    chunk_size = DATASET_CHUNKS[dataset]  
     models_name = ["FedPAttn", "FedPDNN", "FedPLSTM", "AFT_Weibull", "Fed_CoxPH", "LinearPH", "NNPH", "NNnPH", "DeepHit",  "DeepPseudo"]   
-    data_dictionary = {
-      "seer": {
-            "folds": [0], # list(range(5)), 
-            "chunk_size": 1500
-        }, 
-      "Pbc3":{
-            "folds": list(range(3)), 
-            "chunk_size": 100 
-        }, 
-      "LeukSurv":{
-            "folds": list(range(3)), 
-            "chunk_size": 100 
-        },
-      "seer": {
-        "folds":  list(range(5)),
-        "chunk_size": 100
-      }, 
-      "Pbc3": {
-        "folds": list(range(3)),
-        "chunk_size": 100  
-      },
-      "LeukSurv": {
-        "folds": list(range(3)),
-        "chunk_size": 100 
-      }, 
-      "cgd":{
-        "folds": list(range(3)), 
-        "chunk_size": 100 
-      }, 
-      "scania":{
-        "folds": list(range(5)), 
-        "chunk_size": 100 
-      }, 
-      "uis":{
-        "folds": list(range(5)), 
-        "chunk_size": 100 
-      }, 
-      "d.oropha.rec":{
-        "folds": list(range(3)), 
-        "chunk_size": 100 
-      },   
-      "Dialysis":{
-        "folds": list(range(3)), 
-         "chunk_size": 100 
-      }, 
-      "Aids2":{
-        "folds": list(range(5)), 
-         "chunk_size": 100 
-      }    
-    } 
-     
     
     for model_name in models_name:
         rows = []
         logger = create_partition_logger(dataset, model_name)
 
         logger.info("=" * 70)
-        logger.info("Starting partition-level analysis: dataset=%s, model=%s", dataset, model_name)
-
-        folds = data_dictionary[dataset]["folds"]
-        chunk_size = data_dictionary[dataset]["chunk_size"] 
+        logger.info("Starting partition-level analysis: dataset=%s, model=%s", dataset, model_name) 
         
         # Use the actual fold values, not range(len(folds)).
         for fold in folds:

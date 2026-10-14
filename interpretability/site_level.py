@@ -9,13 +9,14 @@ from pycox.models import CoxPH
 from datetime import datetime 
 from collections import Counter
 from itertools import combinations
-from predict import predict_surv_matrix
+from .folds.predict import predict_surv_matrix
+from pathlib import Path 
 from scipy.stats import spearmanr, kendalltau
-from config import TIME_COL, EVENT_COL, SEED, B 
-from utils import  load_site_csv, load_central_site_csv, split_xy
-from utils import  pseudo_eval_times, get_data_model_directory_site_level
-from utils import get_Discretizer, select_survival_background, pseudo_eval_times, load_model_site
-from score_single import global_importance 
+from .config import TIME_COL, EVENT_COL, SEED, B, DATASET_FOLDS, DATASET_CLIENTS 
+from .utils import  get_sites, load_site_csv, load_central_site_csv, split_xy, get_folds
+from .utils import  pseudo_eval_times, get_data_model_directory_site_level
+from .utils import get_Discretizer, select_survival_background, pseudo_eval_times, load_model_site
+from .folds.score import global_importance 
 
 
 def create_site_logger(dataset, model_name):
@@ -165,78 +166,28 @@ def get_args():
     d = args.dataset_group
     return d 
 
-if __name__ == "__main__":
-    out_features = 9
-    dataset_name = "seer"
-    d = get_args() 
-     
-    if d == 1: 
-        dataset_name = "scania"
-    elif d == 2: 
-        dataset_name = "uis"
-    elif d == 3: 
-        dataset_name = "d.oropha.rec" 
-    elif d == 4:
-        dataset_name = "Dialysis"
-    else: 
-        dataset_name = "Aids2"
-    
-    data_dictionary = {
-      "seer": {
-        "folds":  list(range(5)),
-        "sites" : [1, 2, 3]
-      }, 
-      "Pbc3": {
-        "folds": list(range(3)),
-        "sites" : ["Barcelona", "Copenhagen", "Hvidovre", "London", "Lyon", "Munich"]
-      },
-      "LeukSurv": {
-        "folds": list(range(3)),
-        "sites" : list(range(1, 25, 1)) 
-      }, 
-      "cgd":{
-        "folds": list(range(3)), 
-        "sites" :  [ "Europe:Amsterdam", "Europe:other", "US:NIH", "US:other"]
-      }, 
-      "scania":{
-        "folds": list(range(5)), 
-        "sites" : list(range(1, 6, 1)) 
-      }, 
-      "uis":{
-        "folds": list(range(5)), 
-        "sites" : ['A', 'B']
-      }, 
-      "d.oropha.rec":{
-        "folds": list(range(3)), 
-        "sites" : list(range(1, 7, 1)) 
-      },   
-      "Dialysis":{
-        "folds": list(range(3)), 
-        "sites" : [ 120, 128, 184, 217, 344, 561, 562, 641, 741, 743, 917, 918, 936, 954, 983, 984, 1029, 1039, 1048, 1051, 1053, 1061, 1064, 1070, 1071, 1072, 1093, 1100, 1159, 1372, 1437, 1654, 1692, 1699, 2026, 2210, 2211, 2242, 2320, 2351, 2611, 2632, 2811, 2844, 2987, 3064, 3596, 3675, 4122, 4157, 4163, 4779, 4825, 5089, 5135, 5419, 5423, 5432, 5481, 5495, 5513, 5514, 5543, 5653, 5681, 5692, 5768 ]
-      }, 
-      "Aids2":{
-        "folds": list(range(5)), 
-        "sites" : ["NSW", "QLD", "VIC", "Other"] 
-      },   
-    }   
-    
-    models_name = ["FedPAttn", "FedPDNN", "FedPLSTM", "Fed_CoxPH", "LinearPH", "NNPH", "NNnPH", "DeepHit",  "DeepPseudo", "AFT_Weibull"]   
-    # if n == 1: 
-    #     models_name = ["FedPAttn", "FedPDNN", "FedPLSTM"]
-    # elif n == 2: 
-    #     models_name = ["AFT_Weibull", "Fed_CoxPH", "DeepPseudo", "DeepHit"]
-    # else: 
-    #     models_name = ["LinearPH", "NNPH", "NNnPH"] 
-    
+####################################### Arguments Method ####################################################################
 
-    data_dir = f"/home/il66977@ad.umbc.edu/Benchmarking_FSA/datasets/processed_data/federated_data/{dataset_name}/federated"   
+def get_args(description): 
+    parser = argparse.ArgumentParser( description=description) 
+    parser.add_argument("-d", "--dataset", required=True, choices=DATASET_FOLDS.keys(), help="Dataset to analyze.") 
+    return parser.parse_args()  
+
+if __name__ == "__main__":
+    out_features = 9 
+    args = get_args( "Run site-level interpretability analysis.")
+    
+    dataset =  args.dataset 
+    folds = get_folds(dataset)  
+    sites = get_sites(dataset)
+
+    PROJECT_ROOT = Path(__file__).resolve().parent  
+    models_name = ["FedPAttn", "FedPDNN", "FedPLSTM", "Fed_CoxPH", "LinearPH", "NNPH", "NNnPH", "DeepHit",  "DeepPseudo", "AFT_Weibull"]    
+    data_dir = f"{PROJECT_ROOT}/datasets/processed_data/federated_data/{dataset}/federated"   
     
     for model_name in models_name:
         out_features = 10 if model_name == "DeepPseudo" else 9
-        logger, run_id, log_path = create_site_logger( dataset=dataset_name, model_name=model_name)
-
-        folds = data_dictionary[dataset_name]["folds"]
-        sites = data_dictionary[dataset_name]["sites"]
+        logger, run_id, log_path = create_site_logger( dataset=dataset, model_name=model_name) 
 
         # Stores correlations from every fold.
         all_pairs = []
@@ -248,7 +199,7 @@ if __name__ == "__main__":
                 logger.info("")
                 logger.info("=" * 90)
                 logger.info("STARTING FOLD: run_id=%s, model=%s, fold=%d", run_id, model_name, fold)  
-                checkpoint_path = get_data_model_directory_site_level(model_name, dataset_name, fold)
+                checkpoint_path = get_data_model_directory_site_level(model_name, dataset, fold)
 
                 imps = {}
                 rank_dataframe = {}
@@ -265,7 +216,7 @@ if __name__ == "__main__":
                     importance = site_importance(
                         data_dir=data_dir,
                         logger=logger,
-                        dataset=dataset_name,
+                        dataset=dataset,
                         model_name=model_name,
                         site=site,
                         checkpoint_path=checkpoint_path,
@@ -371,7 +322,7 @@ if __name__ == "__main__":
                 logger.info("#" * 90)
 
         except Exception:
-            logger.exception(f"RUN FAILED: run_id={run_id}, dataset={dataset_name}, model={model_name}")
+            logger.exception(f"RUN FAILED: run_id={run_id}, dataset={dataset}, model={model_name}")
             raise
 
         finally:
