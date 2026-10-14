@@ -1,8 +1,7 @@
 import numpy as np
 import pandas as pd
 from scipy.stats import wilcoxon, rankdata
-from statsmodels.stats.multitest import multipletests
-
+from statsmodels.stats.multitest import multipletests 
 
 ######################### DATA #########################
 

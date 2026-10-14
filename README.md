@@ -1,6 +1,6 @@
 # FSA-Bench: Benchmarking Federated Survival Models
 
-[![Python 3.10](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+[![Python 3.10](https://img.shields.io/badge/python-3.10-blue.svg)](https://www.python.org/downloads/)
 [![PyTorch](https://img.shields.io/badge/PyTorch-2.0+-red.svg)](https://pytorch.org/)
 [![NVIDIA FLARE](https://img.shields.io/badge/NVIDIA%20FLARE-2.7+-orange.svg)](https://nvflare.readthedocs.io/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
@@ -93,16 +93,16 @@ The number of cross-validation folds, federated clients, and batch sizes vary ac
 
 | Dataset | Samples | Variables | Event (%) | Censoring (%) | # Clients |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| [TCGA](https://www.cancer.gov/ccg/research/genome-sequencing/tcga) | 6,084 | 283 | 30.50 | 69.50 | 7 |
-| [Aids2](https://rdrr.io/cran/MASS/man/Aids2.html) | 2,839 | 3 | 62.03 | 37.97 | 4 |
-| [LeukSurv](https://rdrr.io/cran/spBayesSurv/man/LeukSurv.html) | 1,043 | 4 | 84.28 | 15.72 | 24 |
-| [Pbc3](https://www.rdocumentation.org/packages/pec/versions/2025.06.24/topics/Pbc3) | 349 | 12 | 17.48 | 82.52 | 6 |
-| [Dialysis](https://rdrr.io/cran/RcmdrPlugin.survival/man/Dialysis.html) | 6,805 | 2 | 23.56 | 76.44 | 67 |
-| [Oropharyngeal Carcinoma](https://rdrr.io/cran/invGauss/man/d.oropha.rec.html) | 192 | 12 | 72.40 | 27.60 | 6 |
-| [cgd](https://rdrr.io/cran/survival/man/cgd.html) | 128 | 8 | 34.38 | 65.62 | 4 |
-| [uis](https://github.com/graemeleehickey/hosmer-lemeshow/blob/master/edition2/uis.txt) | 628 | 7 | 80.89 | 19.11 | 2 |
-| [scania](https://cran.r-project.org/web/packages/eha/refman/eha.html#scania) | 1,040 | 4 | 52.60 | 47.40 | 5 |
-| [SEER](https://seer.cancer.gov/) | 25,749 | 11 | 25.36 | 74.64 | 3 |
+| TCGA | 6,084 | 283 | 30.50 | 69.50 | 7 |
+| Aids2 | 2,839 | 3 | 62.03 | 37.97 | 4 |
+| LeukSurv | 1,043 | 4 | 84.28 | 15.72 | 24 |
+| Pbc3 | 349 | 12 | 17.48 | 82.52 | 6 |
+| Dialysis | 6,805 | 2 | 23.56 | 76.44 | 67 |
+| Oropharyngeal Carcinoma | 192 | 12 | 72.40 | 27.60 | 6 |
+| cgd | 128 | 8 | 34.38 | 65.62 | 4 |
+| uis | 628 | 7 | 80.89 | 19.11 | 2 |
+| scania  | 1,040 | 4 | 52.60 | 47.40 | 5 |
+| SEER  | 25,749 | 11 | 25.36 | 74.64 | 3 |
 
 > **Dataset availability:** We do not distribute the exact datasets or processed versions used in this benchmark through this repository or via direct download links. Please contact us for additional information regarding data access and availability.
 
