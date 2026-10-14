@@ -65,12 +65,28 @@ pip install -r requirements.txt
 The following Python packages are required for running our experiments.  
 
 ```text
-jupyter==1.0.0
-pycox==0.2.3
-torch==2.0.1
-scikit-learn==1.2.2
-pandas==1.3.5
-numpy==1.24.3
+eval==0.0.5
+folds==0.3.0
+lifelines==0.30.0
+numpy==2.5.4
+nvflare==2.7.0
+pandas==3.0.6
+psutil==7.1.0
+psutil==7.0.0
+pycox==0.3.0
+rpy2==3.6.4
+rpy2_rinterface==3.6.3
+rpy2_robjects==3.6.3
+scikit_learn==1.9.1
+scikit_survival==0.25.0
+scipy==1.18.1
+statsmodels==0.14.6
+survivaleval==0.5.1
+survshap==0.4.2
+torch==2.9.0
+torchsurv==0.2.0
+torchtuples==0.2.2
+transformers==4.57.3
 ```   
 
 ## Dataset
