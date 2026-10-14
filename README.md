@@ -17,7 +17,7 @@ This repository contains the official codebase for **[FSA-Bench: Benchmarking Fe
 
 Please cite the paper if you use FSA-Bench, its code, or datasets:
 
-Sultan Ahmed and Sanjay Purushotham, "FSA-Bench: Benchmarking Federated Survival Models," in *Proceedings of the 11th Machine Learning for Healthcare Conference*, Proceedings of Machine Learning Research (PMLR), vol. 340, pp. 30–54, 2026.
+Sultan Ahmed and Sanjay Purushotham, **"FSA-Bench: Benchmarking Federated Survival Models,"** in *Proceedings of the 11th Machine Learning for Healthcare Conference*, Proceedings of Machine Learning Research (PMLR), vol. 340, pp. 30–54, 2026.
 
 ### BibTeX
 
