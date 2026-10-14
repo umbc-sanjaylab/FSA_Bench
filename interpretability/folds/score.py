@@ -1,23 +1,17 @@
-import contextlib
-import os
+import contextlib, warnings  
 import concurrent.futures
 import multiprocessing as mp
-import warnings
-from typing import List, Optional, Sequence
+import warnings, os, torch 
+from typing import Optional, Sequence
 from functools import partial
 import numpy as np
-import pandas as pd
-import torch 
+import pandas as pd 
 from survshap import SurvivalModelExplainer, ModelSurvSHAP
-from fold.predict import predict_surv_matrix 
+from .predict import predict_surv_matrix 
 from functools import partial
 from typing import Optional, Sequence
 import concurrent.futures
-import multiprocessing as mp
-import warnings 
-import numpy as np
-import pandas as pd
-import torch
+import multiprocessing as mp 
 
 
 _SURVSHAP_WORKER_STATE = {}
@@ -102,9 +96,6 @@ def _process_survshap_chunk( task: tuple[int, pd.DataFrame]) -> tuple[int, int, 
     print( f"{state['device']} starting chunk {chunk_id} with {len(chunk)} observations", flush=True) 
     model_survshap = ModelSurvSHAP( calculation_method=state["method"],  aggregation_method="integral",  B=state["B"],  random_state=state["random_state"])
 
-    # with warnings.catch_warnings():
-    #     warnings.simplefilter("ignore") 
-    #     model_survshap.fit(explainer=state["explainer"], new_observations=chunk, timestamps=state["times"], save_individual_explanations=False)
     
     # Suppress SurvSHAP/tqdm terminal output.
     with open(os.devnull, "w") as devnull:

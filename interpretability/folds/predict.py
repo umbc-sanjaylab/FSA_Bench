@@ -62,6 +62,7 @@ def predict_surv_matrix_FedPseudo(model, X_df, device="cuda:1"):
     
     with torch.no_grad():
         out = model(x)
+        
     S = out.detach().cpu().numpy()
     return S 
 
@@ -156,19 +157,10 @@ def surv_const_pdf(s, sub=10):
     surv = torch.zeros(n, int((m-1)*sub + 1))
     surv[:, :-1] = diff * rho + s_prev
     surv[:, -1] = s[:, -1]
-    return surv.detach().numpy()
-
-# def surv_const_pdf_df(s, cuts, sub=10):
-#     surv = surv_const_pdf(s, sub)
-#     grid = cuts
-    
-#     subgrid = [np.linspace(start, end, num=sub+1)[:-1] for start, end in zip(grid[:-1], grid[1:])] 
-#     subgrid = [inner for outer in subgrid for inner in outer]
-#     subgrid += [grid[-1]]   
-#     return pd.DataFrame(surv, subgrid)
+    return surv.detach().numpy() 
 
 def surv_const_pdf_df(s, cuts, sub=10):
-    surv = surv_const_pdf(s, sub)          # (n_samples, n_subgrid_times)
+    surv = surv_const_pdf(s, sub)           
     grid = cuts
     subgrid = [np.linspace(start, end, num=sub+1)[:-1]
                for start, end in zip(grid[:-1], grid[1:])]

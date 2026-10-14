@@ -28,7 +28,7 @@ def build_optimizer(args):
     elif args.optimizer == "amsgrad":
         raise ValueError( "AMSGrad is not configured for the torchtuples backend.")
     else:
-        raise ValueError( f"Unsupported optimizer backend: {args.optimizer}") 
+        raise ValueError( f"Unsupported optimizer backend: {args.optimizer}")
 
 
 ################################## Method for checking whether metric is finite ##################################################

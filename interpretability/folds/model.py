@@ -365,11 +365,11 @@ class DeepHit_DNN(nn.Module):
 ############################################### NNnPH ###################################################### 
 
 class NNnPH(nn.Module):
-    def __init__(self, dim_in, num_nodes, dim_out, batch_norm=True, dropout=None, activation=nn.ReLU,
-                 output_activation=None, output_bias=True,
-                 w_init_=lambda w: nn.init.kaiming_normal_(w, nonlinearity='relu')):
+    def __init__(self, dim_in, num_nodes, dim_out, batch_norm=True, dropout=None, activation=nn.ReLU, output_activation=None, output_bias=True, w_init_=lambda w: nn.init.kaiming_normal_(w, nonlinearity='relu')):
+        
         super().__init__()
         num_nodes = [dim_in] + num_nodes
+        
         net = []
         for d_in, d_out in zip(num_nodes[:-1], num_nodes[1:]):
             net.append(DenseBlock(d_in, d_out, bias=True, batch_norm=batch_norm, dropout=dropout, activation=activation, w_init_=w_init_))

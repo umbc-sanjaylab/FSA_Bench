@@ -51,7 +51,7 @@ def get_data_model_directory_partition_wise(model, data, fold, client):
 
 def get_data_model_directory_site_level(model, data, fold, client):    
     PROJECT_ROOT = Path(__file__).resolve().parent  
-    model_name = model 
+    model_name = model
     
     if model  not in MODELS:
         raise ValueError(f"Unsupported model: {model_name}") 

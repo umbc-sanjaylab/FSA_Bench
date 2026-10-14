@@ -11,11 +11,11 @@ from collections import Counter
 from itertools import combinations
 from predict import predict_surv_matrix
 from scipy.stats import spearmanr, kendalltau
-from fold.config import TIME_COL, EVENT_COL, SEED, B 
-from fold.utils import  load_site_csv, load_central_site_csv, split_xy
-from fold.utils import  pseudo_eval_times, get_data_model_directory_site_level
-from fold.utils import get_Discretizer, select_survival_background, pseudo_eval_times, load_model_site
-from fold.score import global_importance 
+from config import TIME_COL, EVENT_COL, SEED, B 
+from utils import  load_site_csv, load_central_site_csv, split_xy
+from utils import  pseudo_eval_times, get_data_model_directory_site_level
+from utils import get_Discretizer, select_survival_background, pseudo_eval_times, load_model_site
+from score_single import global_importance 
 
 
 def create_site_logger(dataset, model_name):

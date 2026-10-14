@@ -9,13 +9,13 @@ from pathlib import Path
 from sksurv.util import Surv
 from datetime import datetime 
 from pycox.models import CoxPH
-from fold.score import global_importance
+from .folds.score import global_importance
 from scipy.stats import spearmanr, kendalltau
 from lifelines.exceptions import ApproximationWarning
-from fold.config import TIME_COL, EVENT_COL,   SEED, B 
-from fold.utils import  load_central_csv, load_discretizer, pseudo_eval_times 
-from fold.utils import  get_data_model_directory_partition_wise
-from fold.utils import select_survival_background, load_model_partition
+from .folds.config import TIME_COL, EVENT_COL,   SEED, B 
+from .folds.utils import  load_central_csv, load_discretizer, pseudo_eval_times 
+from .folds.utils import  get_data_model_directory_partition_wise
+from .folds.utils import select_survival_background, load_model_partition
 warnings.filterwarnings("ignore", category=ApproximationWarning)  
 
 def split_xy(df, feature_cols):
@@ -28,7 +28,7 @@ def ranking(ckpt_path, data_name, model_name, fold, chunk_size, logger):
     global discretiser
     data_dir   = f"/home/il66977@ad.umbc.edu/Benchmarking_FSA/datasets/processed_data/federated_data/{data_name}/centralized"
     
-    train_df = load_central_csv(data_dir, "train", fold)
+    train_df = load_central_csv(data_dir, "train", fold)  
     val_df = load_central_csv(data_dir, "val", fold)
     test_df = load_central_csv(data_dir, "test", fold)
 
@@ -146,16 +146,6 @@ if __name__=="__main__":
         dataset_name = "Aids2"
     
     models_name = ["FedPAttn", "FedPDNN", "FedPLSTM", "AFT_Weibull", "Fed_CoxPH", "LinearPH", "NNPH", "NNnPH", "DeepHit",  "DeepPseudo"]   
-    # if n == 1: 
-    #     models_name = ["FedPAttn", "FedPDNN", "FedPLSTM"]
-    # elif n == 2: 
-    #     models_name = ["AFT_Weibull", "Fed_CoxPH", "DeepPseudo", "DeepHit"]
-    # else: 
-    #     models_name = ["LinearPH", "NNPH", "NNnPH"]
-    
-    # if n == 1: 
-    #     models_name =  ["AFT_Weibull", "Fed_CoxPH", "DeepPseudo", "DeepHit", "LinearPH", "NNPH", "NNnPH"]
-          
     data_dictionary = {
       "seer": {
             "folds": [0], # list(range(5)), 
