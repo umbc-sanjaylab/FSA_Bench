@@ -60,8 +60,8 @@ def train_centralized(net, data, feature_list, evaltime, args):
     logger.info("Done!")
 
     # Load the trained model and evaluate the performances
-    torch.save(best_model_state, f"{args.modeldir}/{args.model}_{args.run_id}.pt")
-    logger.info(f"model is saved at {args.modeldir}/{args.model}_{args.run_id}.pt")
+    torch.save(best_model_state, f"{args.modeldir}/{args.model}_CL_{args.run_id}.pt")
+    logger.info(f"model is saved at {args.modeldir}/{args.model}_CL_{args.run_id}.pt")  
 
     # Load the best model state before evaluation
     net.load_state_dict(best_model_state) 

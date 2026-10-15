@@ -9,15 +9,12 @@ logger = logging.getLogger("experiment")
 def is_finite_metric(value):
     return value is not None and np.isscalar(value) and np.isfinite(float(value))  
 
-def run_federated(clients, eval_times, alpha=0.2, sigma=0.1, labTransform=None, args=None):
+def run_federated(clients, eval_times,  args=None):
     """Start federated experiment for DeepHit model 
 
     Args:
         clients (_type_): clients data for federated settings
-        eval_times (_type_): Evaluation times for the model
-        alpha (float, optional): Alpha parameter for DeepHit. Defaults to 0.2.
-        sigma (float, optional): Sigma parameter for DeepHit. Defaults to 0.1.
-        labTransform (_type_, optional): Label transform for durations. Defaults to None.
+        eval_times (_type_): Evaluation times for the model  
         args (_type_): Training arguments
 
     Returns:
@@ -25,7 +22,7 @@ def run_federated(clients, eval_times, alpha=0.2, sigma=0.1, labTransform=None, 
     """    
     input_size = clients[0].train.X.shape[1] 
     global_model = init_net(input_size,  args).to(args.device)
-    early_stopping = EarlyStopping(patience=args.patience, verbose=True, directory=args.modeldir, checkpoint_pth=f'CoxPH_gobal_{args.run_id}.tar')
+    early_stopping = EarlyStopping(patience=args.patience, verbose=True, directory=args.modeldir, checkpoint_pth=f'DeepHit_global_{args.run_id}.pt') 
 
     # Initialize outputs safely.
     global_val_cindex, test_cindex, test_brier = np.nan, np.nan, np.nan 

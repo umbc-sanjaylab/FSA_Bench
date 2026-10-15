@@ -39,6 +39,17 @@ def load_raw_dataset(dataset_name):
 
     return pd.read_csv(file_path)
 
+######################################### Read centralized dataset #############################################
+  
+def get_centralized_dataset(dataset_name, run_id):
+  base_dir = PROCESSED_DATA_DIR / dataset_name / "CL" / "0" / str(run_id)
+
+  train_df = pd.read_csv(base_dir / "train.csv")
+  val_df = pd.read_csv(base_dir / "val.csv")
+  test_df = pd.read_csv(base_dir / "test.csv")
+
+  return train_df, val_df, test_df
+
 ######################################### Read train, val, and test data for a specific client ################
  
 def get_local_dataset( dataset_name, partition, client_id, run_id):

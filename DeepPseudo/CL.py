@@ -107,8 +107,8 @@ def train_centralized(net, data,  evaltime, args):
 
     # store the best model state
     os.makedirs(args.modeldir, exist_ok=True)
-    model_path = os.path.join(args.modeldir, f"{args.model}_{args.run_id}.pt")
-    torch.save(best_state, model_path)
+    model_path = os.path.join(args.modeldir, f"{args.model}_CL_{args.run_id}.pt")
+    torch.save(best_state, model_path)  
 
     # load the best model state for evaluation
     net.load_state_dict(best_state)

@@ -131,8 +131,8 @@ def train_net(net_id, client_name, net, modeldir, dataset, train_dataloader, val
                 break
 
     # create directory if it does not exist
-    checkpoint_dir = os.path.join(modeldir, dataset)
-    os.makedirs(checkpoint_dir, exist_ok=True)
+    checkpoint_dir = os.path.join(modeldir, f"{args.model}_CL_{args.run_id}.pt")
+    os.makedirs(checkpoint_dir, exist_ok=True) 
 
     # store and load the model parameters
     torch.save(best_model_state, f'{checkpoint_dir}/{args.model}_{args.run_id}_{client_name}.pt')

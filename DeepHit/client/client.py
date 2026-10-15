@@ -38,7 +38,7 @@ def train_local_client(global_model, client, args):
          
     logger.info(log) 
     os.makedirs(args.modeldir, exist_ok=True)
-    torch.save({"model_state_dict": net.net.state_dict(),
+    torch.save({"model": net.net.state_dict(),
                   "duration_index": labtrans.cuts,
                   "num_durations": args.num_durations,
                   "alpha": alpha, "sigma": sigma,

@@ -12,11 +12,20 @@ def is_finite_metric(value):
     return value is not None and np.isscalar(value) and np.isfinite(float(value))  
 
 def run_federated(clients, eval_times, args):
-    input_size = clients[0].train.X.shape[1]
-     
+    """Start federated experiment for DeepPseudo model 
+    
+    Args:
+        clients (_type_): clients data for federated settings
+        eval_times (_type_): Evaluation times for the model  
+        args (_type_): Training arguments
+
+    Returns:
+        eval_metrics: evaluation metrics of the best global model on test data
+    """   
+    input_size = clients[0].train.X.shape[1] 
     global_model = init_net(input_size,  args)
     global_model.to(args.device)
-    early_stopping = EarlyStopping(patience=args.patience, verbose=True, directory=args.modeldir, checkpoint_pth=f'AFT_Weibull_gobal_{args.run_id}.tar')
+    early_stopping = EarlyStopping(patience=args.patience, verbose=True, directory=args.modeldir, checkpoint_pth=f'DeepPseudo_global_{args.run_id}.pt')
 
     # Initialize outputs safely.
     global_val_cindex, test_cindex, test_brier = np.nan, np.nan, np.nan 

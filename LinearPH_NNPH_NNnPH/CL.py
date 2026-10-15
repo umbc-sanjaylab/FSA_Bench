@@ -9,41 +9,35 @@ from .client.utils import prepare_nnnph_dataloaders, build_optimizer, Concordanc
 
 ################  Training NNnPH Model with "Centralized" framework in Local Client  #################################
 
-def train_centralized(model, data, eval_times, args): 
-    device = args.device   
-    train_loader, val_loader, discretiser =   prepare_nnnph_dataloaders(data, args) 
+def train_centralized(data, eval_times, args, logger):
+    """Train and evaluate the selected survival model in the centralized setting."""
      
-    model = init_net(data.feature_size, len(discretiser.cuts), args) 
-    model.to(device)
-    
-    # dim_out=len(discretiser.cuts)``
-
-    ######################################  Optimizer & Scheduler ################################################
+    #  load the train set, val set, model and discretizer    
+    train_loader, val_loader, discretiser =   prepare_nnnph_dataloaders(data, args)  
+    model = init_net(data.train.X.shape[1], len(discretiser.cuts), args) 
+    model.to(args.device)
+      
+    # Optimizer & Scheduler  
     optimizer = build_optimizer(model, args) 
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode="min", patience=args.patience)
 
-    ################################################ Early Stopping ########################################### 
+    # Early Stopping   
     best_val_cindex = -np.inf 
     best_model_state = deepcopy(model.state_dict()) 
-    early_stop_counter = 0 
+    early_stop_counter = 0  
 
-    ################################################ Validation Data ########################################## 
-    X_val_tensor = torch.as_tensor(data.val.X, dtype=torch.float32, device=device)
-
-
-    ################################################ Training ################################################# 
+    # Training   
     for epoch in range(args.epochs): 
-        train_loss = train( train_loader, model, optimizer, device) 
-        val_loss = validate(val_loader, model, device)
+        train_loss = train( train_loader, model, optimizer, args.device) 
+        val_loss = validate(val_loader, model, args.device)
 
         if np.isfinite(val_loss):
             scheduler.step(val_loss)
+        
+        val_cindex = Concordance( model, data.val.X, data.val.time, data.val.event, discretiser, args.device) 
+        logger.info( f"Epoch {epoch + 1}/{args.epochs} | train_loss={train_loss:.4f} | " f"val_loss={val_loss:.4f} |  val_cindex={val_cindex}") 
 
-        val_cindex = Concordance( model, X_val_tensor, data.val.time, data.val.event, discretiser, device) 
-        print( f"Epoch {epoch + 1}/{args.epochs} | train_loss={train_loss:.4f} | " f"val_loss={val_loss:.4f} |  val_cindex={val_cindex}") 
-
-        ################################################ Early stopping ######################################
-
+        # Early stopping   
         if val_cindex is None or not np.isfinite(val_cindex):
             early_stop_counter += 1
             if early_stop_counter >= args.patience:
@@ -61,38 +55,33 @@ def train_centralized(model, data, eval_times, args):
                 break
 
 
-    ################################################ Restore Best Model #######################################
-
+   # Restore Best Model  
     model.load_state_dict(best_model_state) 
-    model.eval() 
+    model.eval()  
 
-    ################################################ Save Model ################################################
-
+    #  Save Model  
     os.makedirs( args.modeldir, exist_ok=True ) 
-    model_path = os.path.join( args.modeldir, (f"Centralized_" f"{args.model}_" f"{args.dataset}_" f"{args.run_id}_0.pt" ) )
-
+    model_path = os.path.join( args.modeldir, (f"{args.model}_CL_{args.run_id}.pt")) 
     torch.save( { "model": model.state_dict(), "discretizer": discretiser }, model_path) 
-    print( f"Model saved at {model_path}" )
-
-
-    ################################################ Test Evaluation #########################################
-
+    logger.info( f"Model saved at {model_path}") 
+    
+   # Test Evaluation  
     try:
         test_cindex, test_brier, test_nbll, test_p_value, test_weighted_MAE_PO = Evaluation( model,
             data.train.time, data.train.event,
             data.test.X, data.test.time, data.test.event,
-            eval_times, discretiser, device)
+            eval_times, discretiser, args.device)
 
     except Exception as e: 
-        print( f"[Centralized evaluation error] " f"{type(e).__name__}: {e}" ) 
+        logger.error( f"[Centralized evaluation error] " f"{type(e).__name__}: {e}" ) 
         test_cindex, test_brier, test_nbll, test_p_value, test_weighted_MAE_PO = np.nan, np.nan, np.nan, np.nan, np.nan  
 
 
-    print( f">> Test C-index: {test_cindex}") 
-    print( f">> Test Brier: {test_brier}") 
-    print( f">> Test NBLL: {test_nbll}") 
-    print( f">> Test D-Calibration: {test_p_value}") 
-    print( f">> Test Weighted MAE PO: {test_weighted_MAE_PO}") 
+    logger.info( f">> Test C-index: {test_cindex}") 
+    logger.info( f">> Test Brier: {test_brier}") 
+    logger.info( f">> Test NBLL: {test_nbll}") 
+    logger.info( f">> Test D-Calibration: {test_p_value}") 
+    logger.info( f">> Test Weighted MAE PO: {test_weighted_MAE_PO}") 
 
     return {
         "cindex": test_cindex,

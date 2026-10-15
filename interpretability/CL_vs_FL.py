@@ -1,66 +1,46 @@
-import os 
-import logging 
-import argparse
-import warnings 
-import numpy as np 
-import pandas as pd  
+import argparse, warnings 
+import numpy as np
+import pandas as pd
 import torchtuples as tt
-from pathlib import Path
-from sksurv.util import Surv
-from datetime import datetime 
 from pycox.models import CoxPH
-from .score import global_importance
-from scipy.stats import spearmanr, kendalltau
+from scipy.stats import kendalltau, spearmanr 
 from lifelines.exceptions import ApproximationWarning
-from .config import DATASET_CHUNKS, TIME_COL, EVENT_COL,   SEED, B, DATASET_FOLDS, DATASET_CLIENTS  
-from .utils import  get_folds, get_sites, load_central_csv, load_discretizer, pseudo_eval_times 
-from .utils import  get_data_model_directory_partition_wise
-from .utils import select_survival_background, load_model_partition
-warnings.filterwarnings("ignore", category=ApproximationWarning)  
 
-def split_xy(df, feature_cols):
-    X_df = df[feature_cols].astype("float32") 
-    y_sksurv = Surv.from_arrays( event=df[EVENT_COL].astype(bool).to_numpy(), time=df[TIME_COL].to_numpy(dtype="float32"))  # For SurvSHAP
-    y_pycox = ( df[TIME_COL].to_numpy(dtype="float32"), df[EVENT_COL].to_numpy(dtype="int64"))  # For PyCox CoxPH 
-    return X_df, y_sksurv, y_pycox
-  
-def ranking(ckpt_path, data_name, model_name, fold, chunk_size, logger): 
-    global discretiser
-    PROJECT_ROOT = Path(__file__).resolve().parent  
-    data_dir   = f"{PROJECT_ROOT}/datasets/processed_data/federated_data/{data_name}/centralized"
-    
-    train_df = load_central_csv(data_dir, "train", fold)  
-    val_df = load_central_csv(data_dir, "val", fold)
-    test_df = load_central_csv(data_dir, "test", fold)
+from .config import B, DATASET_CHUNKS, DATASET_FOLDS, SEED  
+from .data import prepare_fold_data 
+from .score import global_importance
+from utils import create_partition_logger
+from .utils import get_partition_checkpoint_paths 
+from .utils import get_folds, load_model_partition 
+warnings.filterwarnings("ignore", category=ApproximationWarning)   
 
-    feature_cols = [ column for column in train_df.columns if column not in (TIME_COL, EVENT_COL)]
-    times = pseudo_eval_times( pd.concat( [train_df[TIME_COL], val_df[TIME_COL]], ignore_index=True)) 
-    
-    background_positions = select_survival_background(train_df, background_size = 100, random_state= 42)
-    sampled_train_Df = train_df.iloc[background_positions]
-     
-    X_train_df, y_train_sksurv, _= split_xy(sampled_train_Df, feature_cols)
-    X_test_df, y_test_sksurv, _ = split_xy(test_df, feature_cols)
-    X_full_train_df, _, y_full_train_pycox = split_xy(train_df, feature_cols)
-     
-    in_features  =  len(feature_cols)
-    out_features = 10 if model_name == "DeepPseudo" else 9   
-    if model_name == "NNnPH": 
-        model, _ = load_model_partition(model_name, ckpt_path, in_features=in_features, out_features=out_features, discretiser=discretiser) 
-    else: 
-        model, discretiser = load_model_partition(model_name, ckpt_path, in_features=in_features, out_features=out_features)
-     
-    if model_name == "Fed_CoxPH":                          
-        opt = tt.optim.Adam(lr=1e-3, weight_decay=5e-5)
-        net = CoxPH(model, opt)                       
-        net.compute_baseline_hazards(X_full_train_df.to_numpy(dtype="float32"), y_full_train_pycox)
-        logger.info("CoxPH object loaded successfully")
-    else: 
-        net = model 
-    
-    important_score = global_importance(fold, model_name, net, X_test_df, y_test_sksurv, background=X_train_df, y_background=y_train_sksurv, n_explain=None, times=times, discretizer=discretiser, B=B, method="sampling", random_state=SEED, features=feature_cols, chunk_size=chunk_size, num_workers=4, devices=[ "cuda:0", "cuda:1", "cuda:2", "cuda:3"])
+def ranking(checkpoint_path, model_name, fold, fold_data, chunk_size, logger):
+    feature_cols, times, X_bg, y_bg, X_test, y_test, X_train, y_train_pycox = fold_data
+
+    model, discretiser = load_model_partition(
+        model_name,
+        checkpoint_path,
+        in_features=len(feature_cols),
+        out_features=10 if model_name == "DeepPseudo" else 9
+    )
+
+    if model_name == "Fed_CoxPH":
+        net = CoxPH(model, tt.optim.Adam(lr=1e-3, weight_decay=5e-5))
+        net.compute_baseline_hazards(X_train.to_numpy(dtype="float32"), y_train_pycox)
+    else:
+        net = model
+
+    importance = global_importance(
+        fold, model_name, net, X_test, y_test,
+        background=X_bg, y_background=y_bg, times=times,
+        discretizer=discretiser, B=B, method="sampling",
+        random_state=SEED, features=feature_cols,
+        chunk_size=chunk_size, num_workers=4,
+        devices=["cuda:0", "cuda:1", "cuda:2", "cuda:3"]
+    )
+
     logger.info("SurvSHAP completed for fold %d", fold)
-    return  important_score, feature_cols
+    return importance 
 
 
 def validate_importance(scores, partition, expected_features):
@@ -89,37 +69,33 @@ def validate_importance(scores, partition, expected_features):
     
     return scores
 
+  
+######################### Compare feature importance for both CL & FL Settings ##################################################
+def compare_importance(cl_scores, fl_scores, fold, logger):
+    paired = pd.concat([cl_scores.rename("CL"), fl_scores.rename("FL")], axis=1)
 
-def create_partition_logger(dataset, model_name):
-    log_directory = os.path.join( "log", "partition_level", dataset, model_name)
-    os.makedirs(log_directory, exist_ok=True)
+    if len(paired) < 2 or paired["CL"].nunique() < 2 or paired["FL"].nunique() < 2:
+        spearman, kendall = np.nan, np.nan
+        logger.warning("Fold %d: feature-rank correlation is undefined.", fold)
+    else:
+        spearman = spearmanr(paired["CL"], paired["FL"]).correlation
+        kendall = kendalltau(paired["CL"], paired["FL"]).correlation
 
-    log_path = os.path.join(log_directory, "partition_level_all_runs.log")
-    logger_name = f"partition_level.{dataset}.{model_name}"
-    logger = logging.getLogger(logger_name)
-    
-    logger.setLevel(logging.INFO)
-    logger.propagate = False
+    paired["CL_rank"] = paired["CL"].rank(method="average", ascending=False)
+    paired["FL_rank"] = paired["FL"].rank(method="average", ascending=False)
 
-    for handler in logger.handlers[:]:
-        handler.flush()
-        handler.close()
-        logger.removeHandler(handler)
+    identical_scores = np.allclose(paired["CL"], paired["FL"], rtol=1e-7, atol=1e-10)
+    identical_ranks = np.array_equal(paired["CL_rank"].to_numpy(), paired["FL_rank"].to_numpy())
 
-    file_handler = logging.FileHandler(log_path, mode="a", encoding="utf-8")
-    formatter = logging.Formatter( fmt="%(asctime)s %(levelname)-8s %(name)s: %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
+    logger.info("Fold %d feature comparison:\n%s", fold, paired.sort_values("CL_rank").to_string())
 
-    file_handler.setFormatter(formatter)
-    logger.addHandler(file_handler)
-
-    run_id = datetime.now().strftime("%Y%m%d_%H%M%S")
-
-    logger.info("")
-    logger.info("#" * 90)
-    logger.info(f"STARTING NEW RUN: run_id={run_id}, dataset={dataset}, model={model_name}")
-    logger.info("#" * 90)
-
-    return logger
+    return {
+        "fold": fold,
+        "CLvsFL_spearman": spearman,
+        "CLvsFL_kendall": kendall,
+        "identical_scores": identical_scores,
+        "identical_ranks": identical_ranks
+    }
 
 
 ####################################### Arguments Method ####################################################################
@@ -129,9 +105,8 @@ def get_args(description):
     parser.add_argument("-d", "--dataset", required=True, choices=DATASET_FOLDS.keys(), help="Dataset to analyze.") 
     return parser.parse_args()  
   
-if __name__=="__main__": 
-    global discretiser
-    args = get_args( "Run site-level interpretability analysis.")
+if __name__=="__main__":  
+    args = get_args("Compare centralized and federated feature importance.")
     
     dataset =  args.dataset 
     folds = get_folds(dataset)   
@@ -148,79 +123,27 @@ if __name__=="__main__":
         
         # Use the actual fold values, not range(len(folds)).
         for fold in folds:
-            CL_Model_Path, FL_Model_Path =  get_data_model_directory_partition_wise( dataset, model_name, fold=fold) 
+            cl_path, fl_path = get_partition_checkpoint_paths(dataset, model_name, fold)
 
-            cl_path = Path(CL_Model_Path).resolve()
-            fl_path = Path(FL_Model_Path).resolve()
-            
             if not cl_path.exists():
-                raise FileNotFoundError( f"CL checkpoint path does not exist: {cl_path}")
-
+                raise FileNotFoundError(f"CL checkpoint not found: {cl_path}")
             if not fl_path.exists():
-                raise FileNotFoundError( f"FL checkpoint path does not exist: {fl_path}")
+                raise FileNotFoundError(f"FL checkpoint not found: {fl_path}")
 
-            if cl_path == fl_path:
-                raise RuntimeError( f"CL and FL paths are identical for fold={fold}: {cl_path}")
- 
-            logger.info(f"Fold {fold} checkpoint paths:\nCL: {cl_path}\nFL: {fl_path}")
+            logger.info("Fold %d checkpoints:\nCL: %s\nFL: %s", fold, cl_path, fl_path)
 
-            if model_name == "NNnPH":
-                discretiser = load_discretizer(FL_Model_Path)
- 
-            # Keep the original importance scores.
-            cl_scores, cl_features = ranking(CL_Model_Path, dataset, model_name, fold, chunk_size, logger)
-            fl_scores, fl_features = ranking(FL_Model_Path, dataset, model_name, fold, chunk_size, logger)
+            fold_data = prepare_fold_data(dataset, fold)
 
-            if cl_features != fl_features:  
-                 raise ValueError(f"CL and FL feature columns differ for fold={fold}.")
+            cl_scores = ranking(cl_path, model_name, fold, fold_data, chunk_size, logger)
+            fl_scores = ranking(fl_path, model_name, fold, fold_data, chunk_size, logger)
             
-            cl_scores = validate_importance(cl_scores, "CL", cl_features)
-            fl_scores = validate_importance(fl_scores, "FL", cl_features)
+            feature_cols = fold_data[0]
+            cl_scores = validate_importance(cl_scores, "CL", feature_cols)
+            fl_scores = validate_importance(fl_scores, "FL", feature_cols)
 
-            # Align CL and FL explicitly by feature name.
-            paired = pd.concat( [cl_scores, fl_scores], axis=1, join="outer")
-
-            # Missing values here usually indicate mismatched feature names.
-            if paired.isna().any().any():
-                missing_in_cl = paired.index[paired["CL"].isna()].tolist()
-                missing_in_fl = paired.index[paired["FL"].isna()].tolist()
-
-                raise ValueError( f"Feature mismatch for fold={fold}. Missing in CL={missing_in_cl}; missing in FL={missing_in_fl}")
-              
-            if len(paired) < 2:
-                logger.warning(f"Fold={fold}: Fewer than two features are available; correlation is undefined.")
-                spearman_coeff = np.nan
-                kendall_tau_coeff = np.nan
-
-            elif paired["CL"].nunique() < 2 or paired["FL"].nunique() < 2:
-                logger.warning(f"Fold={fold}: Correlation is undefined because at least one partition has constant importance scores. CL_unique={paired['CL'].nunique()},  FL_unique={paired['FL'].nunique()}")
-                spearman_coeff = np.nan
-                kendall_tau_coeff = np.nan
-
-            else:
-                spearman_coeff = spearmanr(paired["CL"], paired["FL"]).correlation
-                kendall_tau_coeff = kendalltau(paired["CL"],paired["FL"]).correlation
-
-            # Store ranks only for inspection.
-            paired["CL_rank"] = paired["CL"].rank(method="average", ascending=False)
-            paired["FL_rank"] = paired["FL"].rank( method="average", ascending=False)
-
-            identical_scores = np.allclose( paired["CL"], paired["FL"], rtol=1e-7, atol=1e-10)
-            identical_ranks = np.array_equal( paired["CL_rank"].to_numpy(), paired["FL_rank"].to_numpy())
- 
-            logger.info(f"Fold {fold} feature comparison:\n{paired.sort_values('CL_rank').to_string()}") 
-            logger.info(f"Fold={fold}, Spearman={spearman_coeff:.6f}, Kendall tau={kendall_tau_coeff:.6f}, identical_scores={identical_scores}, identical_ranks={identical_ranks}")
-
-            rows.append(
-                {
-                    "fold": fold,
-                    "model": model_name,
-                    "CLvsFL_spearman": spearman_coeff,
-                    "CLvsFL_kendall": kendall_tau_coeff,
-                    "identical_scores": identical_scores,
-                    "identical_ranks": identical_ranks,
-                }
-            )
+            result = compare_importance(cl_scores, fl_scores, fold, logger)
+            result["model"] = model_name
+            rows.append(result)
 
         clfl = pd.DataFrame(rows)
         logger.info( "Fold-level partition results:\n%s", clfl.to_string(index=False))

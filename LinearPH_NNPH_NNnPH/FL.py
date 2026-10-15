@@ -5,15 +5,12 @@ from .model import init_net
 
 from .client.utils import Discretiser, data_transform
 from .server.server import aggregate_fedavg
-from .server.utils import EarlyStopping 
-
-import logging 
-logger = logging.getLogger("experiment")
+from .server.utils import EarlyStopping  
 
 def is_finite_metric(value):
     return value is not None and np.isscalar(value) and np.isfinite(float(value))  
-
-def run_federated(clients, eval_times, args): 
+ 
+def run_federated(clients, eval_times, args, logger):
     device = args.device 
     discretiser = Discretiser(args.num_duration, scheme='km') 
     
@@ -27,7 +24,6 @@ def run_federated(clients, eval_times, args):
     global_model = init_net(input_size, len(discretiser.cuts), args) 
     global_model.to(device)  
  
-      
     early_stopping = EarlyStopping(patience=args.patience, directory=args.modeldir,\
                                   verbose=True, discretiser=discretiser,\
                                   checkpoint_pth=f"{args.model}_global_{args.run_id}.pt")
@@ -42,7 +38,8 @@ def run_federated(clients, eval_times, args):
         n_clients = len(clients) 
         n_selected = max(1, int(n_clients * args.sample)) 
         
-        selected_indices = np.random.permutation(n_clients)[:n_selected] 
+        rng = np.random.default_rng(args.init_seed + args.run_id)
+        selected_indices = rng.permutation(n_clients)[:n_selected] 
         selected_clients = [clients[idx] for idx in selected_indices]
 
         ################################################ Local Training ############################
@@ -51,7 +48,10 @@ def run_federated(clients, eval_times, args):
         for client in selected_clients: 
             try: 
                 local_model = train_local_client(global_model=global_model, client=client, discretiser=discretiser, args=args) 
-                local_models[client.client_id] = local_model 
+                if local_model is not None:
+                    local_models[client.client_id] = local_model
+                else:
+                    logger.warning( "Client %s produced no valid local model.", client.client_id)
             except Exception as exc: 
                 logger.exception("Client %s local training failed.", client.client_id)
 
@@ -94,11 +94,11 @@ def run_federated(clients, eval_times, args):
         else: 
             logger.warning("Round %d: global validation C-index is undefined.", comm_round)
 
-        if improved: 
-            logger.info("New best global model | round=%d | val_cindex=%.4f", comm_round, global_val_cindex)
+        if improved:  
+            logger.info( "New best global model | round=%d | val_cindex=%.4f", comm_round + 1, global_val_cindex)
 
         logger.info( "Round %d | Val C-index: %.4f | Test C-index: %.4f | Brier: %.4f | NBLL: %.4f | D-calibration: %.4f | MAE PO: %.4f",
-            comm_round, global_val_cindex, test_cindex, test_brier, test_nbll, test_p_value, test_mae_po)
+            comm_round+1, global_val_cindex, test_cindex, test_brier, test_nbll, test_p_value, test_mae_po)
 
         last_round = comm_round 
         if early_stopping.early_stop: 

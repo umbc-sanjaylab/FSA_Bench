@@ -19,10 +19,11 @@ import os, torch, logging
 
 from sksurv.util import Surv
 import torchtuples as tt
-from .config import TIME_COL, EVENT_COL
+from .config import TIME_COL, EVENT_COL, MODEL_DIRECTORIES
 
 from lifelines import KaplanMeierFitter
 from pycox.models import DeepHit 
+from DeepHit.model import build_deephit_net 
 from sklearn.model_selection import StratifiedShuffleSplit 
 
 
@@ -33,7 +34,7 @@ def select_survival_background( train_df: pd.DataFrame, background_size: int = 2
     Stratification uses:
         event status + survival-time quantile
     """
-    n_train = len(train_df) 
+    n_train = len(train_df)
     if n_train == 0:
         raise ValueError("train_df is empty.")
 
@@ -67,38 +68,17 @@ def select_survival_background( train_df: pd.DataFrame, background_size: int = 2
     return np.sort(background_positions)   
 
 
-####################################### partition wise configuration ####################################################################
+####################################### partition wise configuration #################################################################### 
 
-def get_data_model_directory_partition_wise(dataset, model_name, fold):
-    CENT_TMPL, FED_TMPL = None, None 
-    PROJECT_ROOT = Path(__file__).resolve().parent  
-    if model_name in ["FedPDNN", "FedPLSTM", "FedPAttn"] : 
-        CENT_TMPL = f"{PROJECT_ROOT}/models/federated_data/centralized/{dataset}/{dataset}/{model_name}_global_{fold}.pt"
-        FED_TMPL = f"{PROJECT_ROOT}/models/federated_data/federated/{dataset}/{model_name}/{dataset}/{model_name}_global_{fold}.pt"
-    elif model_name == "AFT_Weibull": 
-        CENT_TMPL = f"{PROJECT_ROOT}/models/federated_data/centralized/{dataset}/{model_name}_{fold}_0.pt"
-        FED_TMPL = f"{PROJECT_ROOT}/models/federated_data/federated/{dataset}/{model_name}_model_run_{fold}.tar"
-    elif model_name == "DeepHit": 
-        CENT_TMPL = f"{PROJECT_ROOT}/models/federated_data/centralized/{dataset}/{model_name}_{fold}_0.pt"
-        FED_TMPL = f"{PROJECT_ROOT}/models/federated_data/federated/{dataset}/{model_name}_model_run_{fold}.pt"
-    elif model_name == "LinearPH": 
-        CENT_TMPL = f"{PROJECT_ROOT}/models/federated_data/centralized/{dataset}/Centralized_LinearPH_{dataset}_{fold}_0.pt"
-        FED_TMPL = f"{PROJECT_ROOT}/models/federated_data/federated/{dataset}/LinearPH_model_run_{fold}.pt"
-    elif model_name == "NNPH": 
-        CENT_TMPL = f"{PROJECT_ROOT}/models/federated_data/centralized/{dataset}/Centralized_NNph_{dataset}_{fold}_0.pt"
-        FED_TMPL =  f"{PROJECT_ROOT}/models/federated_data/federated/{dataset}/NNph_model_run_{fold}.pt"
-    elif model_name == "Fed_CoxPH": 
-        CENT_TMPL = f"{PROJECT_ROOT}/models/federated_data/centralized/{dataset}/Fed_CoxPH_{fold}_0.pt"
-        FED_TMPL = f"{PROJECT_ROOT}/models/federated_data/federated/{dataset}/CoxPH_model_run_{fold}.pt"
-    elif model_name == "NNnPH": 
-        CENT_TMPL = f"{PROJECT_ROOT}/models/federated_data/centralized/{dataset}/Centralized_NNnPH_{dataset}_{fold}_0.pt"
-        FED_TMPL = f"{PROJECT_ROOT}/models/federated_data/federated/{dataset}/NNnPH_model_run_{fold}.pt"
-    elif model_name == "DeepPseudo":   
-        CENT_TMPL = f"{PROJECT_ROOT}/models/federated_data/centralized/{dataset}/DeepPseudo_{fold}_0.pt"
-        FED_TMPL = f"{PROJECT_ROOT}/models/federated_data/federated/{dataset}/DeepPseudo_global_model_{fold}.pt"
-    else: 
-        raise ValueError("model name did not match with our repository")
-    return CENT_TMPL, FED_TMPL
+def get_partition_checkpoint_paths(dataset, model_name, fold):
+    project_root = Path(__file__).resolve().parents[1] 
+    if model_name not in MODEL_DIRECTORIES:
+        raise ValueError(f"Unsupported model: {model_name}")
+
+    model_root = project_root / MODEL_DIRECTORIES[model_name] 
+    cl_model_path = model_root / "checkpoints" / "cl" / dataset / model_name / f"{model_name}_CL_{fold}.pt"  
+    fl_model_path = model_root / "checkpoints" / "fl" / dataset / model_name / f"{model_name}_global_{fold}.pt"  
+    return cl_model_path, fl_model_path
 
 ################################ Model Directory for Site Level ############################################################ 
 
@@ -191,124 +171,138 @@ def get_Discretizer(fold):
     return discretiser
 
 ####################################### Split Dataframe into feature and labels ####################################################################
-
-def load_model(model_name, ckpt_path1, in_features, out_features):
-    discretiser = None 
-    ckpt = torch.load(ckpt_path1,  weights_only=False)
-    
-    if model_name == "DeepHit":   
-        state = ckpt["model_state_dict"]
-        opt = tt.optim.Adam(lr=1e-3, weight_decay=5e-5)
-        model = build_model(model_name, in_features, out_features)
-        
-        duration_index = ckpt["duration_index"]
-        alpha, sigma = ckpt["alpha"], ckpt["sigma"]
-        model = DeepHit(model, opt, alpha=alpha, sigma=sigma, duration_index=duration_index)
-        
-    elif model_name in [ "LinearPH", "NNPH"]:
-        state = ckpt["model"]
-        discretiser = ckpt["discretizer"] 
-        model = build_model(model_name, in_features, out_features, discretiser) 
-        state = {k: (v if torch.is_tensor(v) else torch.as_tensor(np.asarray(v))) for k, v in state.items()} 
-        model.load_state_dict(state) 
-    else:
-        model = build_model(model_name, in_features, out_features, discretiser) 
-        state = ckpt.get("state_dict", ckpt) if isinstance(ckpt, dict) else ckpt  
-        state = {k: (v if torch.is_tensor(v) else torch.as_tensor(np.asarray(v))) for k, v in state.items()}
-        model.load_state_dict(state)
-    return model, discretiser
-
+ 
 def load_discretizer(ckpt_path1): 
     ckpt = torch.load(ckpt_path1,  weights_only=False)
     discretizer_ley = "discretizer" if "discretizer" in ckpt else "discretiser"
     discretiser = ckpt[discretizer_ley]  
-    return discretiser
+    return discretiser  
+ 
+def load_model_partition(model_name, checkpoint_path, in_features, out_features=None):
+    checkpoint = torch.load(checkpoint_path, map_location="cpu", weights_only=False)
+    discretiser = checkpoint.get("discretizer", checkpoint.get("discretiser"))
+
+    if model_name == "DeepHit":
+        duration_index = checkpoint["duration_index"]
+        net = build_deephit_net(in_features, len(duration_index))
+        net.load_state_dict(checkpoint["model"])
+
+        model = DeepHit(net,
+            tt.optim.Adam(lr=1e-3),
+            alpha=checkpoint["alpha"],
+            sigma=checkpoint["sigma"],
+            duration_index=duration_index
+        )
+
+        model.net.eval()
+        return model, None
+
+    if model_name in ["LinearPH", "NNPH", "NNnPH"] and discretiser is None:
+        raise ValueError(f"{model_name} checkpoint does not contain a discretizer: {checkpoint_path}")
+
+    model = build_model(model_name, in_features, out_features, discretiser)
+    model.load_state_dict(checkpoint["model"])
+    model.eval()
+
+    return model, discretiser 
+  
+# def load_model(model_name, ckpt_path1, in_features, out_features):
+#     discretiser = None 
+#     ckpt = torch.load(ckpt_path1,  weights_only=False)
+    
+#     if model_name == "DeepHit":   
+#         state = ckpt["model_state_dict"]
+#         opt = tt.optim.Adam(lr=1e-3, weight_decay=5e-5)
+#         model = build_model(model_name, in_features, out_features)
+        
+#         duration_index = ckpt["duration_index"]
+#         alpha, sigma = ckpt["alpha"], ckpt["sigma"]
+#         model = DeepHit(model, opt, alpha=alpha, sigma=sigma, duration_index=duration_index)
+        
+#     elif model_name in [ "LinearPH", "NNPH"]:
+#         state = ckpt["model"]
+#         discretiser = ckpt["discretizer"] 
+#         model = build_model(model_name, in_features, out_features, discretiser) 
+#         state = {k: (v if torch.is_tensor(v) else torch.as_tensor(np.asarray(v))) for k, v in state.items()} 
+#         model.load_state_dict(state) 
+#     else:
+#         model = build_model(model_name, in_features, out_features, discretiser) 
+#         state = ckpt.get("state_dict", ckpt) if isinstance(ckpt, dict) else ckpt  
+#         state = {k: (v if torch.is_tensor(v) else torch.as_tensor(np.asarray(v))) for k, v in state.items()}
+#         model.load_state_dict(state)
+#     return model, discretiser
+
 
   
-def load_model_site(model_name, ckpt_path1, in_features, out_features):
-    discretiser = None 
-    ckpt = torch.load(ckpt_path1,  weights_only=False)
+# def load_model_site(model_name, ckpt_path1, in_features, out_features):
+#     discretiser = None 
+#     ckpt = torch.load(ckpt_path1,  weights_only=False)
     
-    if model_name == "DeepHit":   
-        state = ckpt["model_state_dict"]
-        opt = tt.optim.Adam(lr=1e-3, weight_decay=5e-5)
-        model = build_model(model_name, in_features, out_features)
+#     if model_name == "DeepHit":   
+#         state = ckpt["model_state_dict"]
+#         opt = tt.optim.Adam(lr=1e-3, weight_decay=5e-5)
+#         model = build_model(model_name, in_features, out_features)
         
-        duration_index = ckpt["duration_index"]
-        alpha, sigma = ckpt["alpha"], ckpt["sigma"]
-        model = DeepHit(model, opt, alpha=alpha, sigma=sigma, duration_index=duration_index)
+#         duration_index = ckpt["duration_index"]
+#         alpha, sigma = ckpt["alpha"], ckpt["sigma"]
+#         model = DeepHit(model, opt, alpha=alpha, sigma=sigma, duration_index=duration_index)
         
-    elif model_name in ["NNnPH"]: 
+#     elif model_name in ["NNnPH"]: 
         
-        if isinstance(ckpt, dict) and "model" in ckpt:
-            state = ckpt["model"]
-            discretizer_ley = "discretizer" if "discretizer" in ckpt else "discretiser"
-            discretiser = ckpt[discretizer_ley] 
-        elif isinstance(ckpt, dict) and ckpt and all(torch.is_tensor(value) for value in ckpt.values()):
-            state = ckpt
-        else:       
-            state = None 
+#         if isinstance(ckpt, dict) and "model" in ckpt:
+#             state = ckpt["model"]
+#             discretizer_ley = "discretizer" if "discretizer" in ckpt else "discretiser"
+#             discretiser = ckpt[discretizer_ley] 
+#         elif isinstance(ckpt, dict) and ckpt and all(torch.is_tensor(value) for value in ckpt.values()):
+#             state = ckpt
+#         else:       
+#             state = None 
         
-        model = build_model(model_name, in_features, out_features, discretiser) 
-        state = {k: (v if torch.is_tensor(v) else torch.as_tensor(np.asarray(v))) for k, v in state.items()} 
-        model.load_state_dict(state)
+#         model = build_model(model_name, in_features, out_features, discretiser) 
+#         state = {k: (v if torch.is_tensor(v) else torch.as_tensor(np.asarray(v))) for k, v in state.items()} 
+#         model.load_state_dict(state)
         
-    elif model_name in [ "LinearPH", "NNPH"]:
-        state = ckpt["model"]
-        discretiser = ckpt["discretizer"] 
-        model = build_model(model_name, in_features, out_features, discretiser) 
-        state = {k: (v if torch.is_tensor(v) else torch.as_tensor(np.asarray(v))) for k, v in state.items()} 
-        model.load_state_dict(state)
+#     elif model_name in [ "LinearPH", "NNPH"]:
+#         state = ckpt["model"]
+#         discretiser = ckpt["discretizer"] 
+#         model = build_model(model_name, in_features, out_features, discretiser) 
+#         state = {k: (v if torch.is_tensor(v) else torch.as_tensor(np.asarray(v))) for k, v in state.items()} 
+#         model.load_state_dict(state)
     
-    else:
-        model = build_model(model_name, in_features, out_features, discretiser) 
-        state = ckpt.get("state_dict", ckpt) if isinstance(ckpt, dict) else ckpt  
-        state = {k: (v if torch.is_tensor(v) else torch.as_tensor(np.asarray(v))) for k, v in state.items()}
-        model.load_state_dict(state)
-    return model, discretiser
+#     else:
+#         model = build_model(model_name, in_features, out_features, discretiser) 
+#         state = ckpt.get("state_dict", ckpt) if isinstance(ckpt, dict) else ckpt  
+#         state = {k: (v if torch.is_tensor(v) else torch.as_tensor(np.asarray(v))) for k, v in state.items()}
+#         model.load_state_dict(state)
+#     return model, discretiser
 
 
   
-def load_model_partition(model_name, ckpt_path1, in_features, out_features, discretiser = None): 
-    ckpt = torch.load(ckpt_path1,  weights_only=False)
+# def load_model_partition(model_name, ckpt_path1, in_features, out_features, discretiser = None): 
+#     ckpt = torch.load(ckpt_path1,  weights_only=False)
     
-    if model_name == "DeepHit":   
-        state = ckpt["model_state_dict"]
-        opt = tt.optim.Adam(lr=1e-3, weight_decay=5e-5)
-        model = build_model(model_name, in_features, out_features)
+#     if model_name == "DeepHit":   
+#         state = ckpt["model_state_dict"]
+#         opt = tt.optim.Adam(lr=1e-3, weight_decay=5e-5)
+#         model = build_model(model_name, in_features, out_features)
         
-        duration_index = ckpt["duration_index"]
-        alpha, sigma = ckpt["alpha"], ckpt["sigma"]
-        model = DeepHit(model, opt, alpha=alpha, sigma=sigma, duration_index=duration_index)
-        
-    elif model_name in ["NNnPH"]: 
-        
-        if isinstance(ckpt, dict) and "model" in ckpt:
-            state = ckpt["model"]
-            discretizer_ley = "discretizer" if "discretizer" in ckpt else "discretiser"
-            discretiser = ckpt[discretizer_ley] 
-        elif isinstance(ckpt, dict) and ckpt and all(torch.is_tensor(value) for value in ckpt.values()):
-            state = ckpt
-        else:       
-            state = None 
-        
-        model = build_model(model_name, in_features, out_features, discretiser) 
-        state = {k: (v if torch.is_tensor(v) else torch.as_tensor(np.asarray(v))) for k, v in state.items()} 
-        model.load_state_dict(state)
-        
-    elif model_name in [ "LinearPH", "NNPH"]:
-        state = ckpt["model"]
-        discretiser = ckpt["discretizer"] 
-        model = build_model(model_name, in_features, out_features, discretiser) 
-        state = {k: (v if torch.is_tensor(v) else torch.as_tensor(np.asarray(v))) for k, v in state.items()} 
-        model.load_state_dict(state)
+#         duration_index = ckpt["duration_index"]
+#         alpha, sigma = ckpt["alpha"], ckpt["sigma"]
+#         model = DeepHit(model, opt, alpha=alpha, sigma=sigma, duration_index=duration_index)
+          
+#     elif model_name in [ "LinearPH", "NNPH", "NNnPH"]:
+#         state = ckpt["model"]
+#         discretiser = ckpt["discretizer"] 
+#         model = build_model(model_name, in_features, out_features, discretiser) 
+#         state = {k: (v if torch.is_tensor(v) else torch.as_tensor(np.asarray(v))) for k, v in state.items()} 
+#         model.load_state_dict(state)
     
-    else:
-        model = build_model(model_name, in_features, out_features, discretiser) 
-        state = ckpt.get("state_dict", ckpt) if isinstance(ckpt, dict) else ckpt  
-        state = {k: (v if torch.is_tensor(v) else torch.as_tensor(np.asarray(v))) for k, v in state.items()}
-        model.load_state_dict(state)
-    return model, discretiser
+#     else:
+#         model = build_model(model_name, in_features, out_features, discretiser) 
+#         state = ckpt.get("state_dict", ckpt) if isinstance(ckpt, dict) else ckpt  
+#         state = {k: (v if torch.is_tensor(v) else torch.as_tensor(np.asarray(v))) for k, v in state.items()}
+#         model.load_state_dict(state)
+#     return model, discretiser
  
   
 ####################################### Split Dataframe into feature and labels ####################################################################

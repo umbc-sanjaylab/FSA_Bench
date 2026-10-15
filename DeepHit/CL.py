@@ -9,7 +9,7 @@ logger = logging.getLogger("experiment")
     
 def  train_centralized(data,  evaltime, alpha, sigma, labtrans, args): 
     logger.info('Training network') 
-    ckpt_path = os.path.join(args.modeldir,   f"DeepHit_{args.run_id}_global.pt")  
+    ckpt_path = os.path.join(args.modeldir,   f"DeepHit_CL_{args.run_id}.pt")   
     
     # DeepHitSingle.label_transform standardize the durations    
     y_train = labtrans.fit_transform(data.train.time, data.train.event)
@@ -17,8 +17,7 @@ def  train_centralized(data,  evaltime, alpha, sigma, labtrans, args):
 
     # Create the validation set
     val_data = (data.val.X, y_val)
-    test_cindex, test_brier, test_nbll, test_p_value, test_weighted_MAE_PO = np.nan, np.nan, np.nan, np.nan, np.nan 
-    
+    test_cindex, test_brier, test_nbll, test_p_value, test_weighted_MAE_PO = np.nan, np.nan, np.nan, np.nan, np.nan  
     
     # Initialize model and Torchtuples optimizer
     model = init_net(data.train.X.shape[1], args)
@@ -34,7 +33,7 @@ def  train_centralized(data,  evaltime, alpha, sigma, labtrans, args):
     
     # Save the model checkpoint
     os.makedirs(args.modeldir, exist_ok=True) 
-    torch.save({"model_state_dict": net.net.state_dict(),
+    torch.save({"model": net.net.state_dict(),
                   "duration_index": labtrans.cuts,
                   "num_durations": args.num_duration,
                   "alpha": alpha, "sigma": sigma,

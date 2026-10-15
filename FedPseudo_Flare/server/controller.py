@@ -115,8 +115,8 @@ class FederatedSurvivalController(BaseFedAvg):
             verbose=True,
             directory=checkpoint_dir,
             checkpoint_pth=f"{self.model_name}_global_{self.run_id}.pt" 
-        )
-
+        )  
+ 
         best_global_params = None
         comm_round_done = 0
         

@@ -20,9 +20,9 @@ def  train_centralized(data,  evaltime, args):
     model = init_net(data.train.X.shape[1], args)
     optimizer = build_optimizer(args=args)
     
-    # Early stopping
-    ckpt_path = os.path.join( args.modeldir, f"Fed_CoxPH_{args.dataset}_run_{args.run_id}") 
-    callbacks = [tt.callbacks.EarlyStopping( patience=args.patience, file_path=ckpt_path, load_best=True, rm_file=True )] 
+    # callback configuration for torch tuples. 
+    model_path = os.path.join( args.modeldir, f"Fed_CoxPH_CL_{args.run_id}.pt") 
+    callbacks = [tt.callbacks.EarlyStopping( patience=args.patience, file_path=model_path, load_best=True, rm_file=True )]  
     
     # validation events checking 
     if np.sum(data.val.event == 1) == 0:
@@ -43,10 +43,7 @@ def  train_centralized(data,  evaltime, args):
         val_batch_size=val_batch_size 
     )
 
-    logger.info("Centralized CoxPH training completed: %s", log) 
-    os.makedirs(args.modeldir, exist_ok=True) 
-    model_path = os.path.join( args.modeldir, f"Fed_CoxPH_{args.dataset}_run_{args.run_id}.pt")
-
+    logger.info("Centralized CoxPH training completed: %s", log)   
     torch.save(net.net.state_dict(), model_path)
     logger.info("Model saved at %s", model_path)
 

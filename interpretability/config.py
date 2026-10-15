@@ -16,6 +16,19 @@ FEATURE_RENAME = {}
 DEVICE     = "cuda:1"  
 os.environ["DEVICE"] = DEVICE
 
+MODEL_DIRECTORIES = {
+    "FedPDNN": "FedPseudo_Flare",
+    "FedPLSTM": "FedPseudo_Flare",
+    "FedPAttn": "FedPseudo_Flare",
+    "AFT_Weibull": "AFT_Weibull",
+    "DeepHit": "DeepHit",
+    "DeepPseudo": "DeepPseudo",
+    "Fed_CoxPH": "Fed_CoxPH",
+    "LinearPH": "LinearPH_NNPH_NNnPH",
+    "NNPH": "LinearPH_NNPH_NNnPH",
+    "NNnPH": "LinearPH_NNPH_NNnPH",
+}
+
 DATASET_FOLDS = {
     "seer": 5,
     "Pbc3": 3,

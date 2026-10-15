@@ -55,7 +55,7 @@ def prepare_survival_data_and_time(args, client_id=None):
         train_df, val_df, test_df, client_name, current_features = get_local_dataset(args.dataset, "FL", client_id, args.run_id)
 
         if feature_names is None:
-            feature_names = current_features
+            feature_names = current_features 
             
         elif feature_names != current_features:
             raise ValueError(f"Feature mismatch for client {client_id}")
