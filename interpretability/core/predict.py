@@ -1,9 +1,6 @@
 import torch 
 import numpy as np 
-import pandas as pd 
-
-import torchtuples as tt
-from pycox.models import CoxPH
+import pandas as pd  
 
 DEVICE = "cuda:1"
 SEED   = 42

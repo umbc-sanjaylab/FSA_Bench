@@ -1,20 +1,11 @@
-# bash scripts/run_fl.sh NNnPH Pbc3 0
-# bash scripts/run_cl.sh NNnPH Pbc3 0 
-
-# bash scripts/run_fl.sh   
-# model → dataset → fold/run
-
-import os, pandas as pd
 from pathlib import Path
 
-#################################### Dataset Directories ############################################################################ 
-
+#  Dataset Directories (Raw & Processed data) 
 DATASET_ROOT = Path(__file__).resolve().parent
 RAW_DATA_DIR = DATASET_ROOT / "datasets/raw_data"
 PROCESSED_DATA_DIR = DATASET_ROOT / "datasets/processed_data"  
 
-#################################### Configurations & Properties of Survival Datasets ################################################ 
- 
+#  Configurations & Properties of Survival Datasets 
 DATASET_CONFIG = {
     "TCGA": {
         "region_column": "Region",

@@ -7,7 +7,7 @@ from lifelines import KaplanMeierFitter
 
 import os, argparse, warnings  
 from pathlib import Path 
-from .config import DATASET_FOLDS,  DATASET_CLIENTS
+from ..config import DATASET_FOLDS,  DATASET_CLIENTS
 
 from .model import FedPDNN, FedPLSTM, FedPAttn, DeepPseudo
 from .model import WeibullTimeToEventModel, Fed_CoxPH 
@@ -19,7 +19,7 @@ import os, torch, logging
 
 from sksurv.util import Surv
 import torchtuples as tt
-from .config import TIME_COL, EVENT_COL, MODEL_DIRECTORIES
+from ..config import TIME_COL, EVENT_COL, MODEL_DIRECTORIES
 
 from lifelines import KaplanMeierFitter
 from pycox.models import DeepHit 
@@ -79,32 +79,7 @@ def get_partition_checkpoint_paths(dataset, model_name, fold):
     cl_model_path = model_root / "checkpoints" / "cl" / dataset / model_name / f"{model_name}_CL_{fold}.pt"  
     fl_model_path = model_root / "checkpoints" / "fl" / dataset / model_name / f"{model_name}_global_{fold}.pt"  
     return cl_model_path, fl_model_path
-
-################################ Model Directory for Site Level ############################################################ 
-
-def get_data_model_directory_site_level(model_name, data, fold):
-    CKPT_TMPL = None 
-    PROJECT_ROOT = Path(__file__).resolve().parent  
-    if model_name in ["FedPDNN", "FedPLSTM", "FedPAttn"]: 
-        CKPT_TMPL = f"{PROJECT_ROOT}/models/federated_data/federated/{data}/{model_name}/{data}/{model_name}_global_{fold}.pt"
-    elif model_name == "AFT_Weibull": 
-        CKPT_TMPL = f"{PROJECT_ROOT}/models/federated_data/federated/{data}/{model_name}_model_run_{fold}.tar"
-    elif model_name == "DeepHit": 
-         CKPT_TMPL = f"{PROJECT_ROOT}/models/federated_data/federated/{data}/{model_name}_model_run_{fold}.pt"
-    elif model_name == "LinearPH": 
-        CKPT_TMPL = f"{PROJECT_ROOT}/models/federated_data/federated/{data}/LinearPH_model_run_{fold}.pt"
-    elif model_name == "NNPH": 
-        CKPT_TMPL = f"{PROJECT_ROOT}/models/federated_data/federated/{data}/NNph_model_run_{fold}.pt"
-    elif model_name == "Fed_CoxPH": 
-        CKPT_TMPL = f"{PROJECT_ROOT}/models/federated_data/federated/{data}/CoxPH_model_run_{fold}.pt"
-    elif model_name == "NNnPH": 
-        CKPT_TMPL = f"{PROJECT_ROOT}/models/federated_data/federated/{data}/NNnPH_model_run_{fold}.pt"
-    elif model_name == "DeepPseudo": 
-        CKPT_TMPL = f"{PROJECT_ROOT}/models/federated_data/federated/{data}/DeepPseudo_global_model_{fold}.pt"
-    else:
-        raise ValueError("model name did not match with our repository")
-         
-    return CKPT_TMPL
+ 
 
 ####################################### Discretizer ####################################################################
 
@@ -205,106 +180,7 @@ def load_model_partition(model_name, checkpoint_path, in_features, out_features=
     model.eval()
 
     return model, discretiser 
-  
-# def load_model(model_name, ckpt_path1, in_features, out_features):
-#     discretiser = None 
-#     ckpt = torch.load(ckpt_path1,  weights_only=False)
     
-#     if model_name == "DeepHit":   
-#         state = ckpt["model_state_dict"]
-#         opt = tt.optim.Adam(lr=1e-3, weight_decay=5e-5)
-#         model = build_model(model_name, in_features, out_features)
-        
-#         duration_index = ckpt["duration_index"]
-#         alpha, sigma = ckpt["alpha"], ckpt["sigma"]
-#         model = DeepHit(model, opt, alpha=alpha, sigma=sigma, duration_index=duration_index)
-        
-#     elif model_name in [ "LinearPH", "NNPH"]:
-#         state = ckpt["model"]
-#         discretiser = ckpt["discretizer"] 
-#         model = build_model(model_name, in_features, out_features, discretiser) 
-#         state = {k: (v if torch.is_tensor(v) else torch.as_tensor(np.asarray(v))) for k, v in state.items()} 
-#         model.load_state_dict(state) 
-#     else:
-#         model = build_model(model_name, in_features, out_features, discretiser) 
-#         state = ckpt.get("state_dict", ckpt) if isinstance(ckpt, dict) else ckpt  
-#         state = {k: (v if torch.is_tensor(v) else torch.as_tensor(np.asarray(v))) for k, v in state.items()}
-#         model.load_state_dict(state)
-#     return model, discretiser
-
-
-  
-# def load_model_site(model_name, ckpt_path1, in_features, out_features):
-#     discretiser = None 
-#     ckpt = torch.load(ckpt_path1,  weights_only=False)
-    
-#     if model_name == "DeepHit":   
-#         state = ckpt["model_state_dict"]
-#         opt = tt.optim.Adam(lr=1e-3, weight_decay=5e-5)
-#         model = build_model(model_name, in_features, out_features)
-        
-#         duration_index = ckpt["duration_index"]
-#         alpha, sigma = ckpt["alpha"], ckpt["sigma"]
-#         model = DeepHit(model, opt, alpha=alpha, sigma=sigma, duration_index=duration_index)
-        
-#     elif model_name in ["NNnPH"]: 
-        
-#         if isinstance(ckpt, dict) and "model" in ckpt:
-#             state = ckpt["model"]
-#             discretizer_ley = "discretizer" if "discretizer" in ckpt else "discretiser"
-#             discretiser = ckpt[discretizer_ley] 
-#         elif isinstance(ckpt, dict) and ckpt and all(torch.is_tensor(value) for value in ckpt.values()):
-#             state = ckpt
-#         else:       
-#             state = None 
-        
-#         model = build_model(model_name, in_features, out_features, discretiser) 
-#         state = {k: (v if torch.is_tensor(v) else torch.as_tensor(np.asarray(v))) for k, v in state.items()} 
-#         model.load_state_dict(state)
-        
-#     elif model_name in [ "LinearPH", "NNPH"]:
-#         state = ckpt["model"]
-#         discretiser = ckpt["discretizer"] 
-#         model = build_model(model_name, in_features, out_features, discretiser) 
-#         state = {k: (v if torch.is_tensor(v) else torch.as_tensor(np.asarray(v))) for k, v in state.items()} 
-#         model.load_state_dict(state)
-    
-#     else:
-#         model = build_model(model_name, in_features, out_features, discretiser) 
-#         state = ckpt.get("state_dict", ckpt) if isinstance(ckpt, dict) else ckpt  
-#         state = {k: (v if torch.is_tensor(v) else torch.as_tensor(np.asarray(v))) for k, v in state.items()}
-#         model.load_state_dict(state)
-#     return model, discretiser
-
-
-  
-# def load_model_partition(model_name, ckpt_path1, in_features, out_features, discretiser = None): 
-#     ckpt = torch.load(ckpt_path1,  weights_only=False)
-    
-#     if model_name == "DeepHit":   
-#         state = ckpt["model_state_dict"]
-#         opt = tt.optim.Adam(lr=1e-3, weight_decay=5e-5)
-#         model = build_model(model_name, in_features, out_features)
-        
-#         duration_index = ckpt["duration_index"]
-#         alpha, sigma = ckpt["alpha"], ckpt["sigma"]
-#         model = DeepHit(model, opt, alpha=alpha, sigma=sigma, duration_index=duration_index)
-          
-#     elif model_name in [ "LinearPH", "NNPH", "NNnPH"]:
-#         state = ckpt["model"]
-#         discretiser = ckpt["discretizer"] 
-#         model = build_model(model_name, in_features, out_features, discretiser) 
-#         state = {k: (v if torch.is_tensor(v) else torch.as_tensor(np.asarray(v))) for k, v in state.items()} 
-#         model.load_state_dict(state)
-    
-#     else:
-#         model = build_model(model_name, in_features, out_features, discretiser) 
-#         state = ckpt.get("state_dict", ckpt) if isinstance(ckpt, dict) else ckpt  
-#         state = {k: (v if torch.is_tensor(v) else torch.as_tensor(np.asarray(v))) for k, v in state.items()}
-#         model.load_state_dict(state)
-#     return model, discretiser
- 
-  
 ####################################### Split Dataframe into feature and labels ####################################################################
 
 def split_xy(df, feature_cols):
@@ -510,46 +386,7 @@ def data_transform(y, discretiser, fit_transform=True):
         else:
             y_trans = discretiser.transform(*y)
 
-    return y_trans
-  
-  
-################################################## Get Input Feature ######################################################
-
-
-def get_input_feature(args):
-    if args.partition == "federated":
-        client_name = get_client_name_for_federated_datasets( args.dataset, client_id=0)
-        dataset_directory = f"{args.datadir}/{args.dataset}/{args.partition}/{client_name}/{args.run_id}/"
-    else:
-        dataset_directory = f"{args.datadir}/{args.dataset}/{args.partition}/0/{args.run_id}/"
-
-    train_df = pd.read_csv(dataset_directory + "train.csv")
-    X_train = np.array(train_df.drop(columns=["time", "event"]), dtype='float32')
-    return X_train.shape[1]
-
-######################################### Region from Federated Dataset by Client ID ########################################
-
-
-def get_client_name_for_federated_datasets(dataset, client_id):
-    dataset_with_region = {
-        "TCGA": ["South", "West", "Midwest", "Northeast", "Europe", "Canada", "Other"],
-        "Aids2": ['NSW', 'Other', 'QLD', 'VIC'],
-        "LeukSurv": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24],
-        "Pbc3": ['London', 'Copenhagen', 'Hvidovre', 'Barcelona', 'Munich', 'Lyon'],
-        "Dialysis": [120, 128, 184, 217, 344, 561, 562, 641, 741, 743, 917, 918, 936, 954, 983, 984, 1029, 1039,
-                     1048, 1051, 1053, 1061, 1064, 1070, 1071, 1072, 1093, 1100, 1159, 1372, 1437, 1654, 1692,
-                     1699, 2026, 2210, 2211, 2242, 2320, 2351, 2611, 2632, 2811, 2844, 2987, 3064, 3596, 3675,
-                     4122, 4157, 4163, 4779, 4825, 5089, 5135, 5419, 5423, 5432, 5481, 5495, 5513, 5514, 5543,
-                     5653, 5681, 5692, 5768],
-        "d.oropha.rec": [2, 5, 4, 6, 3, 1],
-        "cgd": ['Europe:Amsterdam', 'Europe:other', 'US:NIH', 'US:other'],
-        "uis": ["A", "B"],
-        "scania":  [1, 2, 3, 4, 5],
-        "seer": [1, 2, 3]
-    }
-
-    region_list = dataset_with_region[dataset]
-    return region_list[client_id]
+    return y_trans 
 
 
 def global_importance1(fold, model, X, y, background=None,  y_background=None, n_explain=100, times=None,  adapter="sksurv", predict_surv_matrix=None,  B=25,  method="sampling", random_state=42, features=None):
