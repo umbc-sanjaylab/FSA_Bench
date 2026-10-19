@@ -1,4 +1,5 @@
-import numpy as np, itertools
+import itertools
+import numpy as np
 import pandas as pd
 import torchtuples as tt
 
@@ -6,17 +7,15 @@ from pycox.models import CoxPH
 from scipy.stats import kendalltau, spearmanr
 
 from config import MODELS
-from .lib.config import B, DATASET_CHUNKS, SEED
-from .lib.data import prepare_fold_data
-from .lib.score import global_importance
-from .lib.utils import (
-    close_logger,
-    create_model_logger,
-    get_args,
-    get_folds,
+from ..config import B, DATASET_CHUNKS, SEED
+from ..core.data import prepare_fold_data
+from ..core.score import global_importance
+from ..core.utils import (
+    get_args, get_folds,
+    load_model_partition,
     get_partition_checkpoint_paths,
-    load_model_partition
-) 
+    close_logger, create_model_logger 
+)
 
 #################################### Fold Feature Importance ####################################
 

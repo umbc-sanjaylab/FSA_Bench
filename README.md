@@ -181,7 +181,9 @@ For example, to model Pbc3 dataset using NNnPH model, we can use this:
 
 ## Interpretability
 
-FSA-Bench provides fold-level, site-level, and partition-level interpretability analyses. The corresponding modules are available in the `interpretability/` directory.
+FSA-Bench provides three interpretability analyses for evaluating the consistency of feature importance across learning settings, cross-validation folds, and federated clients. The analysis modules are located in `interpretability/analyses/`
+
+Run the following commands from the root directory of the FSA-Bench repository.
 
 Each interpretability experiment requires a dataset name specified using the `-d` or `--dataset` argument.
 
@@ -196,25 +198,25 @@ For detailed information about these datasets, see the [Dataset](#dataset) secti
 ### Fold-Level Interpretation
 
 ```bash
-python -m interpretability.fold_level -d <dataset>
+python -m interpretability.analyses.fold_level -d <dataset>
 ```
 
 ### Site-Level Interpretation
 
 ```bash
-python -m interpretability.site_level -d <dataset>
+python -m interpretability.analyses.site_level -d <dataset>
 ```
 
 ### Partition-Level Interpretation
 
 ```bash
-python -m interpretability.CL_vs_FL -d <dataset>
+python -m interpretability.analyses.CL_vs_FL -d <dataset>
 ```
  
 For example, this command runs the fold-level interpretability analysis on the seer dataset:
 
 ```bash
-python -m interpretability.fold_level -d seer
+python -m interpretability.analyses.fold_level -d seer
 ```  
 
 ## Contact

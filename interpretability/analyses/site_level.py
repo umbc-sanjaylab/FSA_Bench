@@ -1,22 +1,22 @@
-import itertools 
+import itertools
 import numpy as np
 import pandas as pd
 import torchtuples as tt
- 
+
 from pycox.models import CoxPH
-from .lib.config import TIME_COL 
 from scipy.stats import kendalltau, spearmanr
 
 from config import MODELS
-from .lib.config import B, DATASET_CHUNKS, SEED
-from .lib.data import prepare_site_data, prepare_site_eval_times
-from .lib.score import global_importance
-from .lib.utils import (
-    get_args, get_folds,
+from ..core.score import global_importance
+from ..config import B, DATASET_CHUNKS, SEED
+from ..core.data import prepare_site_data, prepare_site_eval_times
+from ..core.utils import (
+    create_site_logger,
+    get_args, get_folds, 
+    load_model_partition,
+    close_logger, get_sites, 
     get_partition_checkpoint_paths,
-    close_logger, create_site_logger,
-    get_sites, load_model_partition
-) 
+)
 
   
 ############################################# calculate feature importance for a particular client ########################################

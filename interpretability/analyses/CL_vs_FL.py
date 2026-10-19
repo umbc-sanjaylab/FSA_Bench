@@ -1,17 +1,21 @@
-import argparse, warnings 
+import argparse, warnings
 import numpy as np
 import pandas as pd
 import torchtuples as tt
+
 from pycox.models import CoxPH
-from scipy.stats import kendalltau, spearmanr 
+from scipy.stats import kendalltau, spearmanr
 from lifelines.exceptions import ApproximationWarning
 
-from .lib.config import B, DATASET_CHUNKS, DATASET_FOLDS, SEED  
-from .lib.data import prepare_fold_data 
-from .lib.score import global_importance
-from utils import create_partition_logger
-from .lib.utils import get_partition_checkpoint_paths 
-from .lib.utils import get_folds, load_model_partition 
+from ..config import B, DATASET_CHUNKS, DATASET_FOLDS, SEED
+from ..core.data import prepare_fold_data
+from ..core.score import global_importance
+from ..core.utils import (
+    create_partition_logger, get_folds,
+    get_partition_checkpoint_paths,
+    load_model_partition,
+)
+
 warnings.filterwarnings("ignore", category=ApproximationWarning)   
 
 def ranking(checkpoint_path, model_name, fold, fold_data, chunk_size, logger):
