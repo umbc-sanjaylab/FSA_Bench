@@ -55,7 +55,6 @@ def save_result(best_round, val_cindex, cindex, brier, nbll, d_calibration, mae_
     file_exists = os.path.exists(csv_path)
     df.to_csv(csv_path, mode="a", header=not file_exists, index=False)  
 
-
 #########################  ##################################################
 def create_partition_logger(dataset, model_name):
     log_directory = os.path.join( "log", "partition_level", dataset, model_name)

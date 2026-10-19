@@ -136,24 +136,15 @@ def normalize_train_val_test_data(train_data, val_data, test_data):
     
 ################################################## save train/val/test split #################################################
 
-def _save_split(train_data, val_data, test_data, out_dir,
-                global_cats_dict, bin_cols_name, multi_cols_name):
+def _save_split(train_data, val_data, test_data, out_dir, global_cats_dict, bin_cols_name, multi_cols_name):
     """
     Impute, encode, and save train/val/test.
     """
-    os.makedirs(out_dir, exist_ok=True)
-
-    train_data, val_data, test_data = preprocess_missing(
-        train_data, val_data, test_data
-    )
+    os.makedirs(out_dir, exist_ok=True) 
+    train_data, val_data, test_data = preprocess_missing(train_data, val_data, test_data)
 
     train_data, val_data, test_data = encode_with_schema(
-        train_data,
-        val_data,
-        test_data,
-        global_cats_dict,
-        bin_cols_name,
-        multi_cols_name,
+        train_data, val_data,  test_data, global_cats_dict, bin_cols_name, multi_cols_name
     )
 
     train_data.to_csv(f"{out_dir}/train.csv", index=False)

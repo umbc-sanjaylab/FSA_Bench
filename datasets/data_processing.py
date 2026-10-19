@@ -2,7 +2,7 @@ import  pandas as pd,  numpy as np
 from .data_loader import get_local_dataset, PROCESSED_DATA_DIR
 from .data_loader import SurvivalSplit,  ClientSurvivalData
 from .data_loader import PreparedSurvivalData, CentralizedSurvivalData 
-from config import get_client_name_for_federated_datasets 
+from utils import get_client_name_for_federated_datasets 
     
 ############################################# Simple Method  ##########################################################################
 def get_centralized_dataset(dataset_name, run_id):
@@ -81,6 +81,24 @@ def prepare_survival_data_and_time(args, client_id=None):
     survival_data = PreparedSurvivalData(clients=clients, centralized=centralized, feature_names=feature_names) 
     eval_times =    compute_eval_times(survival_data, interval=args.time_interval)
     return survival_data, eval_times 
+  
+
+############################################# Survival data and evaluation time Method  ########################################################################## 
+
+def prepare_survival_data_for_client(dataset, fold):
+    clients = [] 
+    region_list = get_client_name_for_federated_datasets(dataset) 
+    
+    for client_name in region_list: 
+        train_df, val_df, test_df, _, _= get_local_dataset(dataset, "FL", client_name, fold)
+        clients.append({
+            "client": client_name, 
+            "train": train_df,
+            "val": val_df,
+            "test": test_df
+        })
+    
+    return clients 
 
 ################################################## Evaluation Time Points ############################################ 
 

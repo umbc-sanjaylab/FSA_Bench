@@ -6,20 +6,19 @@ from pycox.models import CoxPH
 from scipy.stats import kendalltau, spearmanr 
 from lifelines.exceptions import ApproximationWarning
 
-from .config import B, DATASET_CHUNKS, DATASET_FOLDS, SEED  
-from .data import prepare_fold_data 
-from .score import global_importance
+from .lib.config import B, DATASET_CHUNKS, DATASET_FOLDS, SEED  
+from .lib.data import prepare_fold_data 
+from .lib.score import global_importance
 from utils import create_partition_logger
-from .utils import get_partition_checkpoint_paths 
-from .utils import get_folds, load_model_partition 
+from .lib.utils import get_partition_checkpoint_paths 
+from .lib.utils import get_folds, load_model_partition 
 warnings.filterwarnings("ignore", category=ApproximationWarning)   
 
 def ranking(checkpoint_path, model_name, fold, fold_data, chunk_size, logger):
     feature_cols, times, X_bg, y_bg, X_test, y_test, X_train, y_train_pycox = fold_data
 
     model, discretiser = load_model_partition(
-        model_name,
-        checkpoint_path,
+        model_name, checkpoint_path,
         in_features=len(feature_cols),
         out_features=10 if model_name == "DeepPseudo" else 9
     )
@@ -111,7 +110,7 @@ if __name__=="__main__":
     dataset =  args.dataset 
     folds = get_folds(dataset)   
     
-    chunk_size = DATASET_CHUNKS[dataset]  
+    chunk_size = DATASET_CHUNKS[dataset]
     models_name = ["FedPAttn", "FedPDNN", "FedPLSTM", "AFT_Weibull", "Fed_CoxPH", "LinearPH", "NNPH", "NNnPH", "DeepHit",  "DeepPseudo"]   
     
     for model_name in models_name:
