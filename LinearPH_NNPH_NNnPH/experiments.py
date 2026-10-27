@@ -2,7 +2,8 @@ import argparse
 import json
 from pathlib import Path
 
-from config import DATASET_CONFIG, save_result 
+from config import DATASET_CONFIG
+from ..utils import save_result 
 from datasets.data_processing import prepare_survival_data_and_time
  
 from .CL import train_centralized

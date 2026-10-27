@@ -1,5 +1,15 @@
 import torch 
-import torch.nn as nn    
+import torch.nn as nn   
+
+################################################### Function For initializing networks ##################################################
+ 
+def init_net(input_size, eval_times, args):    
+    if args.model == "DeepPseudo":
+        net = DeepPseudo(input_size, out_features = len(eval_times), num_event = 1, dropout = args.dropout) 
+    else:
+        print("not supported yet")
+        exit(1)
+    return net  
 
 ############################# DeepPseudo#####################################    
 class DeepPseudo(nn.Module):
@@ -18,22 +28,53 @@ class DeepPseudo(nn.Module):
     def forward(self, input):
         output = self.surv_net(input)
         final_output=torch.reshape(output, (-1, self.num_event, self.out_features))
-        return final_output
+        return final_output  
 
-################################################### Function For initializing networks ##################################################
+########################## Function for training the model  #####################################
+ 
+def train(dataloader, model, loss_fn, optimizer, device="cpu"):
+    # Total number of observation divided by batch size
+    num_batches = len(dataloader)
+    total_loss = 0
 
-def init_nets(input_size, dropout_p, n_parties,  args): 
-    nets = {net_i: None for net_i in range(n_parties)} 
-    for net_i in range(n_parties): 
-        output_size = args.pseudo_perc_interval
-        num_event= 1 
-            
-        if args.model == "DeepPseudo":
-            net = DeepPseudo(input_size, output_size, num_event, dropout_p) 
-        else:
-            print("not supported yet")
-            exit(1)
-        nets[net_i] = net 
-    return nets  
+    model.train()
+    model.to(device)
+
+    for batch, (X, y) in enumerate(dataloader):
+        # x is covariates and y is the pseudo values in the batch
+        X, y = X.to(device), y.to(device)
+
+        # Compute prediction error
+        pred = model(X)
+        loss = loss_fn(pred, y)
+
+        # Backpropagation
+        optimizer.zero_grad(set_to_none=True)
+        loss.backward()
+        optimizer.step()
+        total_loss += float(loss.item())
+    total_loss /= num_batches
+    return total_loss
+
+########################## Function for evaluating the model ##############################################################
+
+
+def evaluate(dataloader, model, loss_fn, device="cpu"):
+    model.eval()
+    model.to(device)
+
+    num_batches = len(dataloader)
+    test_loss = 0
+
+    with torch.no_grad():
+        for X, y in dataloader:
+            # x is covarites and y is the pseudo values in the batch
+            X, y = X.to(device), y.to(device)
+            pred = model(X)
+            test_loss += float(loss_fn(pred, y).item())
+
+    test_loss /= num_batches
+
+    return test_loss
 
 

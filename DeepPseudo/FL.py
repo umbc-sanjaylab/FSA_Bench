@@ -22,8 +22,8 @@ def run_federated(clients, eval_times, args):
     Returns:
         eval_metrics: evaluation metrics of the best global model on test data
     """   
-    input_size = clients[0].train.X.shape[1] 
-    global_model = init_net(input_size,  args)
+    input_size = clients[0].train.X.shape[1]  
+    global_model = init_net(input_size, eval_times, args)
     global_model.to(args.device)
     early_stopping = EarlyStopping(patience=args.patience, verbose=True, directory=args.modeldir, checkpoint_pth=f'DeepPseudo_global_{args.run_id}.pt')
 
@@ -45,7 +45,7 @@ def run_federated(clients, eval_times, args):
         local_models = {} 
         for client in selected_clients: 
             try: 
-                local_model = train_local_client(global_model=global_model, client=client, args=args) 
+                local_model = train_local_client(global_model, client, eval_times, args) 
                 local_models[client.client_id] = local_model 
             except Exception as exc: 
                 logger.exception("Client %s local training failed.", client.client_id)
@@ -64,7 +64,7 @@ def run_federated(clients, eval_times, args):
 
         # Global Evaluation  
         try:
-            global_val_cindex, test_cindex, test_brier, test_nbll, test_p_value, test_mae_po = evaluate_global_model_on_clients(global_model, clients, eval_times, args)
+            global_val_cindex, test_cindex, test_brier, test_nbll, test_p_value, test_mae_po = evaluate_global_model_on_clients(global_model, selected_indices, clients, eval_times, args)
         except Exception as exc: 
             logger.exception("Round %d: global model evaluation failed.", comm_round)
             global_val_cindex, test_cindex, test_brier = np.nan, np.nan, np.nan

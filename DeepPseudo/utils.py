@@ -5,8 +5,41 @@ import rpy2.robjects as ro
 from rpy2.robjects import default_converter
 from pathlib import Path
 
+import argparse 
 from rpy2.robjects.conversion import localconverter
 from rpy2.robjects import numpy2ri, pandas2ri, default_converter
+
+
+#################################### Arguments for Survival Model Experiments ############################################################ 
+
+def get_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--model', type=str, default='DeepPseudo', help='neural network used in training')
+    parser.add_argument('--dataset', type=str, default='dataDIVAT1', help='dataset used for training') 
+    parser.add_argument('--partition', type=str, default='IID', help='the data partitioning strategy') 
+    parser.add_argument('--batch_size', type=int, default=None, help='input batch size for training (default: 64)') 
+    parser.add_argument("--lr", type=float, default=1e-3, help='learning rate (default: 0.01)') 
+    parser.add_argument("--epochs", type=int, default=250, help='number of local epochs') 
+    parser.add_argument('--n_parties', type=int, default=10, help='number of workers in a distributed cluster') 
+    parser.add_argument('--comm_round', type=int, default=50, help='number of maximum communication round')
+    parser.add_argument('--patience', type=int, default=25, help='number of patience')
+    parser.add_argument('--is_same_initial', type=int, default=1, help='Whether initial all the models with the same parameters in fedavg')
+    parser.add_argument('--init_seed', type=int, default=5, help="Random seed")
+    parser.add_argument('--run_id', type=int, default=0, help="fold number of 5-fold cross validation") 
+    parser.add_argument("--dropout", type=float,  required=False, default=0.5, help="Dropout probability. Default=0.0")
+    parser.add_argument('--datadir', type=str, required=False, default="./data/", help="Data directory") 
+    parser.add_argument("--reg", type=float, default=5e-5, help="L2 regularization strength") 
+    parser.add_argument('--logdir', type=str, required=False, default="./logs/", help='Log directory path')
+    parser.add_argument('--modeldir', type=str, required=False, default="./models/", help='Model directory path')
+    parser.add_argument('--device', type=str, default='cuda:0', help='The device to run the program')
+    parser.add_argument('--log_file_name', type=str, default=None, help='The log file name')
+    parser.add_argument('--optimizer', type=str, default='adam', help='the optimizer') 
+    parser.add_argument('--rho', type=float, default=0, help='Parameter controlling the momentum SGD')
+    parser.add_argument('--sample', type=float, default=1.0, help='Sample ratio for each communication round') 
+    parser.add_argument('--time_interval', type=int, default=10, help='Time interval for evaluation points')
+
+    args = parser.parse_args()
+    return args
 
 ################################################## Data Builder ###################################################### 
 

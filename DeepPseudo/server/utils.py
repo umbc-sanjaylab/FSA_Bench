@@ -27,7 +27,16 @@ def create_experiment_logger(logdir, setting, model, dataset, run_id):
     logger.addHandler(file_handler)
     logger.addHandler(console_handler)
 
-    return logger
+    return logger 
+  
+
+#################################### directory creation ############################################################ 
+
+def mkdirs(dirpath):
+    try:
+        os.makedirs(dirpath)
+    except Exception as _:
+        pass
   
 
 #################################### Early Stopping Criteria ############################################################ 

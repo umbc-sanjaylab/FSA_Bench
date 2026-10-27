@@ -7,7 +7,7 @@ from .model import train,  evaluate
 from .client.utils import Concordance, Evaluation 
 from .client.utils import  build_optimizer, pseudo_loss
 
-import logging, pandas as pd  
+import logging, pandas as pd
 logger = logging.getLogger("experiment") 
 
 ################################ Centralized DeepPseudo Training ################################ 

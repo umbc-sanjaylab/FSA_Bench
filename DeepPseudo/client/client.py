@@ -1,12 +1,13 @@
 from copy import deepcopy
-from .utils import Concordance, train, evaluate
-from .utils import build_optimizer, Evaluation
+from .utils import Concordance
+from .utils import  pseudo_loss
+from ..model import train, evaluate
 from ..utils import is_finite_metric 
 from scipy.stats import combine_pvalues 
-from .utils import  pseudo_loss
-from ..utils import DataBuilder, pseudoFunction
 import pandas as pd, numpy as np, torch  
 from torch.utils.data import DataLoader
+from ..utils import DataBuilder, pseudoFunction
+from .utils import build_optimizer, Evaluation
 
 import logging 
 logger = logging.getLogger("experiment")  
@@ -15,15 +16,19 @@ logger = logging.getLogger("experiment")
 def train_local_client( global_model, client, eval_times, args):  
   
     # Create DataFrame with time and status for pseudo values calculation
-    central_train_data = pd.DataFrame(pd.concat([pd.DataFrame(client.train.time), pd.DataFrame(client.train.status)], axis=1))
+    central_train_data = pd.DataFrame(pd.concat([pd.DataFrame(client.train.time), pd.DataFrame(client.train.event)], axis=1))
     central_train_data.columns = ['time', 'status']
     
-    central_val_data = pd.DataFrame(  pd.concat([pd.DataFrame(client.val.time), pd.DataFrame(client.val.status)], axis=1))
+    central_val_data = pd.DataFrame(  pd.concat([pd.DataFrame(client.val.time), pd.DataFrame(client.val.event)], axis=1))
     central_val_data.columns = ['time', 'status']
     
     # Calculate Pseudo values at prespecified evaltime
     central_data = pd.concat( [central_train_data, central_val_data], axis=0)
-    pseudo_central = pseudoFunction(central_data, eval_times)
+    pseudo_central = pseudoFunction(central_data, eval_times) 
+    logger.info( "Client %s | pseudo shape=%s | NaN=%d | Inf=%d", client.client_id, pseudo_central.shape,  np.isnan(pseudo_central).sum(), np.isinf(pseudo_central).sum())
+
+    if not np.isfinite(pseudo_central).all():
+        raise ValueError(f"Client {client.client_id}:  Pseudo-observations contain NaN or Inf.")
       
     train_pseudo=pseudo_central[:len(central_train_data),:]
     val_pseudo=pseudo_central[len(central_train_data):,:]
@@ -40,6 +45,7 @@ def train_local_client( global_model, client, eval_times, args):
 
     # concordance index
     best_val_cindex = float("-inf")
+    best_val_loss = float("inf") 
     best_model_state = deepcopy(local_model.state_dict())  
     
     # train data loader from covariates, time and event status information
@@ -50,7 +56,7 @@ def train_local_client( global_model, client, eval_times, args):
     val_x = DataBuilder(client.val.X, val_pseudo)
     val_dataloader = DataLoader(dataset=val_x, batch_size=args.batch_size, shuffle=False, num_workers=1) 
 
-    es = 0
+    es = 0 
     for _ in range(epochs):
         # Calculate the train loss using train function
         train_loss = train(train_dataloader, local_model, criterion, optimizer, args.device)  
@@ -60,17 +66,17 @@ def train_local_client( global_model, client, eval_times, args):
         scheduler.step(val_loss) 
       
         # Calculate the validation Cindex
-        metrics =Concordance(local_model, client.val.X.values, client.val.time.values, client.val.event.values, eval_times, args.device)  
+        metrics = Concordance(local_model, client.val.X, client.val.time, client.val.event, eval_times, args.device)  
         logger.info(f'client {client.client_id} evaluation metric: {metrics}')  
         
         # Early Stopping Criteria
         if np.sum(client.val.event == 1) == 0:
-            continue  
+            best_model_state = deepcopy(local_model.state_dict()) 
+            continue
         elif metrics is None or not np.isfinite(metrics):
             es += 1
             if es >= patience:
-                break
-            continue
+                break 
         elif metrics > best_val_cindex:
             best_val_cindex = metrics
             es = 0
@@ -87,15 +93,15 @@ def train_local_client( global_model, client, eval_times, args):
     local_model.load_state_dict(best_model_state_cpu)
     
     local_model.to(args.device)  
-    return  local_model 
+    return  local_model   
 
 ################################## Evaluate Global Model on Clients ###################################################################  
-
-def evaluate_global_model_on_clients(global_model,  selected,  X_val_local_std,  val_time_local,  val_status_local, X_test_local_std, test_time_local, test_status_local,  train_time_local,  train_status_local,  pseudo_evaltime,  device="cpu"):
-    global_model.to(device)
+ 
+def evaluate_global_model_on_clients(global_model, selected_indices, clients, pseudo_evaltime, args): 
+    global_model.to(args.device)
     global_model.eval()
     
-    total_samples_cindex, total_samples_brier= 0, 0
+    total_samples_cindex, total_samples_brier = 0, 0
     total_samples_nbll, total_samples_mae = 0, 0
 
     total_val_samples = 0 
@@ -106,30 +112,30 @@ def evaluate_global_model_on_clients(global_model,  selected,  X_val_local_std, 
     avg_test_brier = 0.0
     avg_test_nbll = 0.0
     avg_test_p_value = 0.0
-    avg_test_MAE_PO = 0.0 
+    avg_test_MAE_PO = 0.0  
 
-    for net_id in selected:
-        X_val = X_val_local_std[net_id]
-        val_time = np.asarray(val_time_local[net_id])
-        val_status = np.asarray(val_status_local[net_id])
+    for net_id in selected_indices:
+        client = clients[net_id]
+        X_val = client.val.X 
+        val_time = client.val.time
+        val_status = client.val.event
 
-        X_test = X_test_local_std[net_id]
-        test_time = np.asarray(test_time_local[net_id])
-        test_status = np.asarray(test_status_local[net_id])
-
-        train_time = np.asarray(train_time_local[net_id])
-        train_status = np.asarray(train_status_local[net_id])
-
-        X_val_tensor = torch.as_tensor(X_val, dtype=torch.float32, device=device)
+        X_test = client.test.X
+        test_time = client.test.time
+        test_status = client.test.event
          
         val_cindex = np.nan
         if len(val_status) > 0 and np.any(val_status == 1):
             try:
-                val_cindex = Concordance( global_model, X_val_tensor, val_time, val_status, pseudo_evaltime, device)
+                val_cindex = Concordance( global_model, X_val, val_time, val_status, pseudo_evaltime, args.device) 
             except Exception as exc:
                 print(f"Client {net_id}: validation C-index could not be calculated: {exc}")
-        
-        test_cindex, test_brier, test_nbll, test_p_value, test_weighted_MAE_PO = Evaluation(global_model, train_time,  train_status, X_test, test_time, test_status, pseudo_evaltime, device) 
+         
+        print("X_test shape:", np.asarray(X_test).shape)
+        print("Number of test samples:", len(test_time))
+        print("Number of features:", len(client.train.X[0]))
+ 
+        test_cindex, test_brier, test_nbll, test_p_value, test_weighted_MAE_PO = Evaluation(global_model, client.train.time,  client.train.event, X_test, test_time, test_status, pseudo_evaltime, args.device) 
         if val_cindex is not None and np.isfinite(val_cindex):
             weighted_val_cindex += float(val_cindex) * len(val_time)
             total_val_samples += len(val_time) 
@@ -151,10 +157,7 @@ def evaluate_global_model_on_clients(global_model,  selected,  X_val_local_std, 
             total_samples_mae += len(test_time)
         
         if is_finite_metric(test_p_value): 
-            client_p_values.append(float(test_p_value))
-                
-    # global_val_cindex = fix_cindex_direction(weighted_val_cindex / total_val_samples) 
-    global_val_cindex = weighted_val_cindex / total_val_samples
+            client_p_values.append(float(test_p_value)) 
     
     if len(client_p_values) > 0:
         avg_test_p_value = combine_pvalues(client_p_values, method="fisher")[1]
@@ -167,5 +170,5 @@ def evaluate_global_model_on_clients(global_model,  selected,  X_val_local_std, 
     avg_test_nbll =  avg_test_nbll / total_samples_nbll if total_samples_nbll > 0 else np.nan  
     avg_test_MAE_PO =  avg_test_MAE_PO / total_samples_mae if total_samples_mae > 0 else np.nan  
 
-    return global_val_cindex, avg_test_cindex, avg_test_brier, avg_test_nbll, avg_test_p_value, avg_test_MAE_PO  
+    return global_val_cindex, avg_test_cindex, avg_test_brier, avg_test_nbll, avg_test_p_value, avg_test_MAE_PO   
     
